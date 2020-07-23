@@ -43,6 +43,7 @@ class Parser
         // todo: Запись мета-данных в БД
 
         while ($this->status != self::END_MESSAGE){
+
             $buffer = $this->getter->getNextReview();
 
             if ($buffer == self::END_CODE) {
