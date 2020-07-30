@@ -24,5 +24,6 @@ abstract class Getter
     }
 
     public abstract function getNextReview();
+    public abstract function getAllReview();
     public abstract function getNotifications();
 }
