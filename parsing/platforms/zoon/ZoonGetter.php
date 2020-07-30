@@ -6,9 +6,11 @@ use phpQuery;
 
 class ZoonGetter extends Getter {
     const LIMIT = 1;
+    const HOST      = 'http://zoon.ru/';
+    const ADD_PATH  = '/js.php?area=service&action=CommentList&owner%5B%5D=organization&owner%5B%5D=prof';
 
     private $link;
-    private $organization_id;
+    private $organization_path;
     private $reviews = [];
     private $activeReview;
 
@@ -22,29 +24,22 @@ class ZoonGetter extends Getter {
     {
         $this->getOrganizationId();
         $this->getFirstReviews();
-        //$this->lastReview = $this->reviews[0];
+        //$this->activeReview = $this->reviews[0];
     }
 
     public function getOrganizationId() {
         $file = file_get_contents($this->link);
         $doc = phpQuery::newDocument($file);
-        $this->organization_id = $doc->find('.comments-section')->attr('data-owner-id');
-
+        $this->organization_path = $doc->find('.comments-section')->attr('data-owner-id');
+        $this->organization_path = '&organization=' . $this->organization_path;
     }
 
     public function getFirstReviews()
     {
-        $host =     'http://zoon.ru/';
-        $add_path = '/js.php?area=service&action=CommentList&owner%5B%5D=organization&owner%5B%5D=prof&organization=';
         $request_info = '&is_widget=1&strategy_options%5Bwith_photo%5D=1&allow_comment=0&skip=127&limit=';
 
-        $temporary = file_get_contents
-        (
-            $host.
-            $add_path.
-            $this->organization_id.
-            $request_info.
-            self::LIMIT
+        $temporary = file_get_contents(self::HOST . self::ADD_PATH . $this->organization_path .
+            $request_info . self::LIMIT
         );
 
         $data = json_decode($temporary);
@@ -79,5 +74,10 @@ class ZoonGetter extends Getter {
         //$longReview = $doc->find('script');
         var_dump($shortReview);
         //var_dump($longReview);
+    }
+
+    public function getAllReview()
+    {
+        // TODO: Implement getAllReview() method.
     }
 }
