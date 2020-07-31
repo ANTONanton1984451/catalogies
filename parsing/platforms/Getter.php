@@ -23,7 +23,6 @@ abstract class Getter
         $this->track = $track;
     }
 
-    public abstract function getNextReview();
+    public abstract function getNextReviews();
     public abstract function getAllReview();
-    public abstract function getNotifications();
 }
