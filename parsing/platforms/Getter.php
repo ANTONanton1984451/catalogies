@@ -5,17 +5,17 @@ namespace parsing\platforms;
 abstract class Getter
 {
     protected $source;
-    protected $actual;
     protected $track;
+    protected $handled;
 
     public function setSource($source)
     {
         $this->source = $source;
     }
 
-    public function setActual($actual)
+    public function setHandled($handled)
     {
-        $this->actual = $actual;
+        $this->handled = $handled;
     }
 
     public function setTrack($track)
@@ -24,5 +24,4 @@ abstract class Getter
     }
 
     public abstract function getNextReviews();
-    public abstract function getAllReview();
 }

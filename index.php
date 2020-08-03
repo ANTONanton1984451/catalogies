@@ -19,11 +19,18 @@ $getter = new ZoonGetter();
 $filter = new ZoonFilter();
 
 
-$getter->setSource('https://volgograd.zoon.ru/restaurants/kapuchino_v_krasnooktyabrskom_rajone/');
+$getter->setSource('https://volgograd.zoon.ru/medical/psihoterapevticheskij_kabinet_blagovest_i_ko');
 $getter->setActual('actual');
 $getter->setTrack('track');
 
+/*
+$doc = phpQuery::newDocument($buffer);
+$temp1 = $doc->find('.js-comment-short-text.comment-text')->text(););
+
+
+var_dump($temp2);*/
 
 $buffer = $getter->getNextReviews();
 $buffer = $getter->getNextReviews();
 $buffer = $filter->clearData($buffer);
+//var_dump($buffer);

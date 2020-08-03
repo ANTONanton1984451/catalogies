@@ -1,4 +1,5 @@
 <?php
+// todo: сделать сравнение данных при обычном парсинге через повторение js скрипта, и при помощи браузера
 
 
 namespace parsing\platforms\zoon;
@@ -9,68 +10,80 @@ use phpQuery;
 
 
 class ZoonGetter extends Getter {
+    const REVIEWS_LIMIT     =  2;
 
-    const LIMIT             =  8;
-    const HOST              = 'https://zoon.ru';
-    const ADD_PATH          = '/js.php?area=service&action=CommentList&owner%5B%5D=organization&owner%5B%5D=prof';
-    const REQUEST_INFO      = '&is_widget=1&strategy_options%5Bwith_photo%5D=0&allow_comment=0&limit=';
-    const PREFIX_ITERATOR   = '&skip=';
+    const HOST              = 'https://zoon.ru/js.php?';
+    const PREFIX_SKIP       = 'skip';
 
-    protected $source;    // Информация, поступающая в getter извне
-    protected $actual;
-    protected $track;
+    const QUERY_CONST_DATA  = [
+                                'area'                                  => 'service',
+                                'action'                                => 'CommentList',
+                                'owner[]'                               => 'organization',
+                                'is_widget'                             => 1,
+                                'strategy_options[with_photo]'          => 0,
+                                'allow_comment'                         => 0,
+                                'limit'                                 => self::REVIEWS_LIMIT,
+                              ];
 
-    private $organization_path;     // Получаемая информация
-    private $request = [7];
-    private $last_review;
+
+
+    protected $source;      // Информация, поступающая в getter из Controller'a
+    protected $track;       // Какие отзывы отслеживаем
+    protected $handled;     // Обрабатывалась ли ссылка ранее
+
+    private $add_query_info = [];   // Дополнительная информация для url запроса
+    private $active_list_reviews;   // Номер текущего листа с отзывами
+    private $status;
 
     public function __construct()
     {
-        // todo: Рефакторинг создания реквеста при помощи массива, для того
-        //      чтобы можно было гарантировать, что ничего не отвалится, при нарушении порядка.
-        // Формирование массива, с частями url, чтобы в дальнейшем сформировать запрос
-        $this->request[0] = self::HOST;
-        $this->request[1] = self::ADD_PATH;
-        $this->request[2] = self::REQUEST_INFO;
-        $this->request[3] = self::LIMIT;
-        $this->request[4] = self::PREFIX_ITERATOR;
-        $this->request[5] = 0;
-
-        $this->last_review = 0;
-    }
-
-    private function getOrganizationId() {
-        $file = file_get_contents($this->source);
-        $doc = phpQuery::newDocument($file);
-        $this->organization_path = '&organization=' . $doc->find('.comments-section')->attr('data-owner-id');
+        $this->add_query_info['owner[]'] = 'prof';      // Строка нужна для корректного формирования url запроса
+        $this->active_list_reviews = 0;
     }
 
     public function getNextReviews() : string
     {
-        $this->request[5] = $this->last_review++ * self::LIMIT;
-        return file_get_contents(implode("", $this->request));
+        $this->add_query_info[self::PREFIX_SKIP] = $this->active_list_reviews++ * self::REVIEWS_LIMIT;
+
+        // todo: Сделать генерацию end message'a
+        if ($this->status == 'end')
+        {
+            return 'end message';
+        }
+
+        // todo: Проверка при генерации ответа, на правильные данные
+
+        return file_get_contents
+        (
+            self::HOST
+            . http_build_query(self::QUERY_CONST_DATA)
+            . '&'
+            . http_build_query($this->add_query_info)
+        );
     }
 
-    public function getAllReview()
-    {
-        // TODO: Implement getAllReview() method.
-    }
-
-    public function setSource($source)
+    public function setSource($source) : void
     {
         $this->source = $source;
         $this->getOrganizationId();
-        $this->request[6] = $this->organization_path;
     }
 
-    public function setActual($actual)
+    public function setActual($actual) : void
     {
         $this->actual = $actual;
     }
 
-    public function setTrack($track)
+    public function setTrack($track) : void
     {
         $this->track = $track;
+    }
+
+    private function getOrganizationId() : void
+    {
+        $file = file_get_contents($this->source);
+        $doc = phpQuery::newDocument($file);
+        $this->add_query_info['organization'] = $doc->find('.comments-section')->attr('data-owner-id');
+        phpQuery::unloadDocuments();
     }
 
 }
