@@ -1,6 +1,4 @@
 <?php
-// todo: сделать инициализацию php query в инициализации объекта, и его unload в конце
-
 
 namespace parsing\platforms\zoon;
 
@@ -9,13 +7,13 @@ use parsing\platforms\Filter;
 use phpQuery;
 
 
-class ZoonFilter extends Filter {
-
+class ZoonFilter extends Filter
+{
     const FORMAT_SIMPLE     = 0;
     const FORMAT_HARD       = 1;
     const FORMAT_MIX        = 2;
 
-    private $format_reviews;
+    public $format_reviews;
     private $tempReviews = [];
     private $readyReviews = [];
 
@@ -25,40 +23,30 @@ class ZoonFilter extends Filter {
     {
         $this->readyReviews = [];       // После каждого прохода, необходимо очистить массив
 
-        $dirty_reviews = json_decode($dirty_reviews);
         $this->doc = phpQuery::newDocument($dirty_reviews->list);
-        $this->checkFormat();
+        $this->checkFormat($dirty_reviews);
+        $this->cutData();
+        phpQuery::unloadDocuments();
 
-        var_dump($dirty_reviews);
-
-        if ($this->format_reviews === self::FORMAT_SIMPLE)
-        {
+        if ($this->format_reviews === self::FORMAT_SIMPLE) {
             $this->clearSimpleData();
-            return $this->readyReviews;
         }
 
-        if ($this->format_reviews === self::FORMAT_HARD)
-        {
-            $this->clearHardData();
-            return $this->readyReviews;
+        if ($this->format_reviews === self::FORMAT_HARD) {
+            $this->clearHardData(count($this->tempReviews));
         }
 
-        if ($this->format_reviews === self::FORMAT_MIX)
-        {
+        if ($this->format_reviews === self::FORMAT_MIX) {
             $this->clearMixData();
-            return $this->readyReviews;
         }
+
+        return $this->readyReviews;
     }
 
-
-    private function clearHardData()
+    private function clearHardData($quantity) : void
     {
-        $buffer = $this->doc->find('script')->text();
-        $buffer = explode('"', $buffer);
-
-        for ($i = 1; $i < count($buffer); $i += 2)
-        {
-            $temp = $buffer[$i];
+        for ($i = 0; $i < $quantity; $i++) {
+            $temp = $this->tempReviews[$i];
 
             $temp = str_replace("A", "@", $temp);
             $temp = str_replace("=", "A", $temp);
@@ -66,21 +54,14 @@ class ZoonFilter extends Filter {
 
             $temp = base64_decode($temp);
 
-            $this->tempReviews[] = $temp;
+            $this->tempReviews[$i] = $temp;
         }
-
-        phpQuery::unloadDocuments();
 
         $this->clearSimpleData();
     }
 
-    private function clearSimpleData()
+    private function clearSimpleData() : void
     {
-        if ($this->format_reviews == self::FORMAT_SIMPLE)
-        {
-            $this->cutSimpleData();
-        }
-
         foreach ($this->tempReviews as $review)
         {
             $doc = phpQuery::newDocument($review);
@@ -94,12 +75,9 @@ class ZoonFilter extends Filter {
 
             $author = $doc->find('span.name')->text();
 
-            if ($text_review_long != '')
-            {
+            if ($text_review_long != '') {
                 $text_review = $text_review_short . $text_review_long;
-            }
-            else
-            {
+            } else {
                 $text_review = $text_review_short;
             }
 
@@ -108,90 +86,112 @@ class ZoonFilter extends Filter {
             phpQuery::unloadDocuments();
 
             // todo: Проверка на официальный ответ
-
         }
 
         $this->tempReviews = [];
     }
 
-    public function getNotifications()
+    private function clearMixData() : void
     {
-        // TODO: Implement getNotifications() method.
-    }
+        for ($i = 0; $i < count($this->tempReviews); $i++) {
+            if (!preg_match('/PGxpIGRhd/', $this->tempReviews[$i])) {
+                $quantity = $i - 1;
+            }
+        }
 
-    private function checkFormat()
-    {
-        if ($this->doc->find('.comment-container.js-comment-container')->text() === '')
-        {
-            $this->format_reviews = self::FORMAT_HARD;
-        }
-        elseif ($this->doc->find('script')->text() === '')
-        {
-            $this->format_reviews = self::FORMAT_SIMPLE;
-        }
-        else
-        {
-            $this->format_reviews = self::FORMAT_MIX;
-        }
+        $this->clearHardData($quantity);
     }
 
     private function formatDate($date)
     {
-
         $split_date = preg_split("/\s+/", $date);
-
-        switch ($split_date[2])
-        {
-            case 'января':
-                $split_date[2] = '01';
-                break;
-            case 'февраля':
-                $split_date[2] = '02';
-                break;
-            case 'марта':
-                $split_date[2] = '03';
-                break;
-            case 'апреля':
-                $split_date[2] = '04';
-                break;
-            case 'мая':
-                $split_date[2] = '05';
-                break;
-            case 'июня':
-                $split_date[2] = '06';
-                break;
-            case 'июля':
-                $split_date[2] = '07';
-                break;
-            case 'августа':
-                $split_date[2] = '08';
-                break;
-            case 'сентября':
-                $split_date[2] = '09';
-                break;
-            case 'октября':
-                $split_date[2] = '10';
-                break;
-            case 'ноября':
-                $split_date[2] = '11';
-                break;
-            case 'декабря':
-                $split_date[2] = '12';
-                break;
-        }
+        $split_date[2] = $this->swapMonthFormat($split_date[2]);    // Замена строковой записи месяца, на числовое
 
         $result = array_slice($split_date, 1, 3);
         $result[] = $split_date[5];
 
-        $result = strtotime(implode($result, '-'));
-
-        return $result;
+        return strtotime(implode($result, '-'));
     }
 
-    private function cutSimpleData()
+    private function swapMonthFormat($month)
     {
-        $temp = $this->doc->find('li.js-comment .comment-text-subtitle')->text();
-        $buffer = explode('<li ', $temp);
-        var_dump($temp);
+        switch ($month)
+        {
+            case 'января':
+                $month = '01';
+                break;
+            case 'февраля':
+                $month = '02';
+                break;
+            case 'марта':
+                $month = '03';
+                break;
+            case 'апреля':
+                $month = '04';
+                break;
+            case 'мая':
+                $month = '05';
+                break;
+            case 'июня':
+                $month = '06';
+                break;
+            case 'июля':
+                $month = '07';
+                break;
+            case 'августа':
+                $month = '08';
+                break;
+            case 'сентября':
+                $month = '09';
+                break;
+            case 'октября':
+                $month = '10';
+                break;
+            case 'ноября':
+                $month = '11';
+                break;
+            case 'декабря':
+                $month = '12';
+                break;
+        }
+
+        return $month;
+    }
+
+    private function cutData() : void
+    {
+        if ($this->format_reviews === self::FORMAT_HARD || $this->format_reviews === self::FORMAT_MIX) {
+            $cutter = $this->doc->find('script')->text();
+            $cutter = explode('"', $cutter);
+
+            for ($i = 1; $i < count($cutter); $i += 2) {
+                $this->tempReviews[] = $cutter[$i];
+            }
+        }
+
+        if ($this->format_reviews === self::FORMAT_SIMPLE || $this->format_reviews === self::FORMAT_MIX) {
+            $cutter = $this->doc->find('li')->html();
+            $cutter = explode('<li', $cutter);
+
+            for ($i = 0; $i < count($cutter); $i++) {
+                $this->tempReviews[] = $cutter[$i];
+            }
+        }
+    }
+
+    private function checkFormat() : void
+    {
+        if ($this->doc->find('.comment-container.js-comment-container')->text() === '') {
+            $this->format_reviews = self::FORMAT_HARD;
+        } elseif ($this->doc->find('script')->text() === '') {
+            $this->format_reviews = self::FORMAT_SIMPLE;
+        } else {
+            $this->format_reviews = self::FORMAT_MIX;
+        }
+    }
+
+    public function getNotifications()
+    {
+        // TODO: Implement getNotifications() method.
     }
 }

@@ -1,81 +1,78 @@
 <?php
-// todo: сделать сравнение данных при обычном парсинге через повторение js скрипта, и при помощи браузера
+// todo: Сделать сравнение данных при обычном парсинге через повторение js скрипта, и при помощи браузера
+// todo: Проверка при генерации ответа, на правильные данные
+// todo: Цеплять общую оценку заведения и количества отзывов, чтобы была возмонжость строить статистику в динамике.
+// todo: Изучить тему, связанную с использованием прокси, и избеганием бана от площадок.
 
 
 namespace parsing\platforms\zoon;
 
-
 use parsing\platforms\Getter;
 use phpQuery;
 
+class ZoonGetter extends Getter
+{
+    const REVIEWS_LIMIT     =  5;
 
-class ZoonGetter extends Getter {
-    const REVIEWS_LIMIT     =  2;
+    const STATUS_OVER   = 2;
+    const STATUS_ACTIVE = 1;
+    const STATUS_END    = 0;
 
     const HOST              = 'https://zoon.ru/js.php?';
     const PREFIX_SKIP       = 'skip';
 
-    const QUERY_CONST_DATA  = [
-                                'area'                                  => 'service',
-                                'action'                                => 'CommentList',
-                                'owner[]'                               => 'organization',
-                                'is_widget'                             => 1,
-                                'strategy_options[with_photo]'          => 0,
-                                'allow_comment'                         => 0,
-                                'limit'                                 => self::REVIEWS_LIMIT,
-                              ];
-
-
+    const QUERY_CONST_DATA  =
+        [
+            'area'                                  => 'service',
+            'action'                                => 'CommentList',
+            'owner[]'                               => 'organization',
+            'is_widget'                             => 1,
+            'strategy_options[with_photo]'          => 0,
+            'allow_comment'                         => 0,
+            'allow_share'                           => 0,
+            'limit'                                 => self::REVIEWS_LIMIT,
+        ];
 
     protected $source;      // Информация, поступающая в getter из Controller'a
     protected $track;       // Какие отзывы отслеживаем
     protected $handled;     // Обрабатывалась ли ссылка ранее
 
     private $add_query_info = [];   // Дополнительная информация для url запроса
-    private $active_list_reviews;   // Номер текущего листа с отзывами
-    private $status;
+    private $active_list_reviews;   // Номер последнего обработанного листа с отзывами
+    private $status;                // Статус работы геттера
 
     public function __construct()
     {
-        $this->add_query_info['owner[]'] = 'prof';      // Строка нужна для корректного формирования url запроса
-        $this->active_list_reviews = 0;
+        $this->add_query_info['owner[]']    = 'prof';      // Строка нужна для корректного формирования url запроса
+        $this->active_list_reviews          = 0;
+        $this->status                       = self::STATUS_ACTIVE;
     }
 
-    public function getNextReviews() : string
+    public function getNextReviews()
     {
-        $this->add_query_info[self::PREFIX_SKIP] = $this->active_list_reviews++ * self::REVIEWS_LIMIT;
-
-        // todo: Сделать генерацию end message'a
-        if ($this->status == 'end')
-        {
-            return 'end message';
+        if ($this->status == self::STATUS_OVER) {
+            return self::END_CODE;
         }
 
-        // todo: Проверка при генерации ответа, на правильные данные
-
-        return file_get_contents
-        (
+        $this->add_query_info[self::PREFIX_SKIP] = $this->active_list_reviews++ * self::REVIEWS_LIMIT;
+        $data = file_get_contents(
             self::HOST
             . http_build_query(self::QUERY_CONST_DATA)
-            . '&'
-            . http_build_query($this->add_query_info)
+            . '&' . http_build_query($this->add_query_info)
         );
-    }
+        $data = json_decode($data);
 
-    public function setSource($source) : void
-    {
-        $this->source = $source;
-        $this->getOrganizationId();
-    }
+        if ($data->remain == 0 && $data->list == '') {
+            $this->status = self::STATUS_END;
+        } elseif ($data->remain == 0) {
+            $this->status = self::STATUS_OVER;
+        }
 
-    public function setActual($actual) : void
-    {
-        $this->actual = $actual;
-    }
+        if ($this->status == self::STATUS_END) {
+            return self::END_CODE;
+        }
 
-    public function setTrack($track) : void
-    {
-        $this->track = $track;
+        return $data;
     }
 
     private function getOrganizationId() : void
@@ -86,4 +83,19 @@ class ZoonGetter extends Getter {
         phpQuery::unloadDocuments();
     }
 
+    public function setSource($source) : void
+    {
+        $this->source = $source;
+        $this->getOrganizationId();
+    }
+
+    public function setHandled($handled) : void
+    {
+        $this->handled = $handled;
+    }
+
+    public function setTrack($track) : void
+    {
+        $this->track = $track;
+    }
 }
