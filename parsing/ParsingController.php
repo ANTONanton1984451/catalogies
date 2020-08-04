@@ -2,10 +2,19 @@
 
 namespace parsing;
 
+use Pimple\Container;
+
 class ParsingController
 {
     private $platform;
-    private $sources = [];
+
+    /**
+     * Массив с ссылками, парсинг которых происходит
+     * @var array
+     */
+    private $sources;
+
+    private $container = new Container();
 
     public function __construct($platform, $bd)
     {

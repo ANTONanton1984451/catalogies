@@ -1,12 +1,24 @@
 <?php
 // todo: Перенести готовые парсеры из предыдущей архитектуры, в директорию platforms и разбить на модули
+// todo: Проверка на соответствие сообщения необходимой тональности
+// todo: Если найдена искомая тональность, добавить данный отзыв в массив $notifies
+// todo: В зависимости от модели прописать логику сохранения отзыва в БД
+// todo: Запись мета-данных в БД
+// todo: Сделать при помощи контейнера зависимостей вызов конструкторов getter, filter and model
+
 
 namespace parsing;
 
+use Pimple\Container;
+
 class Parser
 {
-    const END_MESSAGE = 'end';
-    const END_CODE = 42;
+    const STATUS_ACTIVE     = 0;
+    const STATUS_COMPLETE   = 1;
+    const STATUS_STOPPED    = 2;
+
+    const END_MESSAGE   = 'end';
+    const END_CODE      = 42;
 
     /**
      * Массив с отзывами, которые ищет пользователь сервиса, и о которых его стоит уведомить
@@ -31,7 +43,7 @@ class Parser
 
     public function __construct($platform, $source)
     {
-        // todo: Сделать при помощи контейнера зависимостей вызов конструкторов getter, filter and model
+
     }
 
     public function generateJsonMessage(){
@@ -40,8 +52,6 @@ class Parser
     }
 
     public function parseSource() {
-        // todo: Запись мета-данных в БД
-
         while ($this->status != self::END_MESSAGE){
 
             $buffer = $this->getter->getNextReview();
@@ -52,12 +62,6 @@ class Parser
             }
 
             $buffer = $this->filter->clearData($buffer);
-
-            // todo: Проверка на соответствие сообщения необходимой тональности
-            // todo: Если найдена искомая тональность, добавить данный отзыв в массив $notifies
-            // todo: В зависимости от модели прописать логику сохранения отзыва в БД
         }
-
-
     }
 }
