@@ -1,7 +1,7 @@
 {
     "require": {
         "electrolinux/phpquery": "^0.9.6",
-        "pimple/pimple": "~3.0",
-      "ext-json": "*"
+        "ext-json": "*",
+        "google/apiclient": "^2.7"
     }
 }

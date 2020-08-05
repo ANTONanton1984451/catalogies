@@ -4,5 +4,7 @@ namespace parsing\platforms;
 
 abstract class Filter
 {
-    public abstract function getNotifications();
+
+  public abstract function clearData(array $data);
+
 }

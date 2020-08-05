@@ -8,7 +8,10 @@ abstract class Getter
 
     protected $source;
     protected $track;
-    protected $handled;
+
+    protected $config;
+
+
 
     public function setSource($source)
     {
@@ -24,6 +27,14 @@ abstract class Getter
     {
         $this->track = $track;
     }
+//  ToDo::при продакшене переделать в json
+    public function setConfig($config)
+    {
+        $this->config = $config;
+    }
 
-    public abstract function getNextReviews();
+
+
+    public abstract function getNextReviews(string $handled);
+
 }
