@@ -3,12 +3,13 @@
 
 namespace parsing\platforms\zoon;
 
+use parsing\factories\factory_interfaces\FilterInterface;
 
 use parsing\platforms\Filter;
 use phpQuery;
 
 
-class ZoonFilter extends Filter
+class ZoonFilter extends Filter implements FilterInterface
 {
     const FORMAT_SIMPLE     = 0;
     const FORMAT_HARD       = 1;
@@ -20,12 +21,12 @@ class ZoonFilter extends Filter
 
     private $doc;
 
-    public function clearData($dirty_reviews)
+    public function clearData($raw_data)
     {
         $this->readyReviews = [];       // После каждого прохода, необходимо очистить массив
 
-        $this->doc = phpQuery::newDocument($dirty_reviews->list);
-        $this->checkFormat($dirty_reviews);
+        $this->doc = phpQuery::newDocument($raw_data->list);
+        $this->checkFormat();
         $this->cutData();
         phpQuery::unloadDocuments();
 

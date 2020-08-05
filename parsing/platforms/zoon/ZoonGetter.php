@@ -7,16 +7,17 @@
 
 namespace parsing\platforms\zoon;
 
+use parsing\factories\factory_interfaces\GetterInterface;
 use parsing\platforms\Getter;
 use phpQuery;
 
-class ZoonGetter extends Getter
+class ZoonGetter extends Getter implements GetterInterface
 {
     const REVIEWS_LIMIT     =  5;
 
-    const STATUS_OVER   = 2;
-    const STATUS_ACTIVE = 1;
-    const STATUS_END    = 0;
+    const STATUS_OVER   = 0;
+    const STATUS_START  = 1;
+    const STATUS_END    = 3;
 
     const HOST              = 'https://zoon.ru/js.php?';
     const PREFIX_SKIP       = 'skip';
@@ -45,7 +46,7 @@ class ZoonGetter extends Getter
     {
         $this->add_query_info['owner[]']    = 'prof';      // Строка нужна для корректного формирования url запроса
         $this->active_list_reviews          = 0;
-        $this->status                       = self::STATUS_ACTIVE;
+        $this->status                       = self::STATUS_START;
     }
 
     public function getNextReviews()
