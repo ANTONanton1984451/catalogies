@@ -46,17 +46,19 @@ class DB
     /**
      * @param array $reviews
      * @param string $hash
-     * @return void
+     * @return int
      * Функция кладёт отзывы и доп. инфу в БД.
      * Использует транзакции,так что,если в БД  положенн отзыв но почему-то не положена доп. инфа,
-     * то в таблицу не положится текущая строка в иттерации цикла
+     * то в таблицу не положится текущая строка в иттерации цикла.
+     * Возвращает количество положенных строк в БД.
      * Формат элемента массива,который метод понимает(identifier не обязательный параметр):
      * ['platform'=>'yandex','text'=>'fasdfsafd','rating'=>2,'tonal'=>'POSITIVE','date'=>11234,'identifier'=>'test']
      */
 
-    public function insertReview(array $reviews, string $hash):void
+    public function insertReview(array $reviews, string $hash):int
     {
-       $queryReview = $this->pdo->prepare('INSERT INTO `review`(
+        $count = 0;
+        $queryReview = $this->pdo->prepare('INSERT INTO `review`(
                                                             `platform`,
                                                             `source_hash_key`,
                                                             `text`,
@@ -112,9 +114,10 @@ class DB
                     continue;
                }
                $this->pdo->commit();
-
-
+               $count++;
             }
+
+            return $count;
 
     }
 
@@ -125,7 +128,7 @@ class DB
      * Получает таски и нужную инфу для их выполнения,
      * можно указать лимит получаемых тасок,по дефолту стоит 5
      */
-    public function getTasks(int $limit=5):array
+    public function getTasks(int $limit = 5):array
     {
         $tasks=$this->pdo->prepare('SELECT `source_review`.`platform`,
                                                      `source_review`.`source`,
@@ -138,10 +141,12 @@ class DB
                                                      `source_review`.`source_hash`=`task_queue`.`source_hash_key`
                                                      WHERE `source_review`.`actual`= :actual AND `task_queue`.`status`= :status
                                                      LIMIT :limit');
+
         $tasks->bindParam(':limit',$limit,\PDO::PARAM_INT);
         $tasks->bindValue(':actual','ACTIVE');
         $tasks->bindValue(':status','WAIT');
         $tasks->execute();
+
         return $tasks->fetchAll();
     }
 
@@ -152,10 +157,10 @@ class DB
      * @return array
      * @throws \Exception
      * Возвращает все отзывы по хэшу,при установке флага $add в положение
-     * false выдаёт отзывы без доп.информации к ней,при установке флага  в положение true
+     * false выдаёт отзывы без доп.информации к ним,при установке флага  в положение true
      *  добавляется информация из таблицы 'review_add_info'
      */
-    public function selectAllReview(string $hash, $add = true,$fetch = self::FETCH_ALL) : array
+    public function getAllReview(string $hash, $add = true,$fetch = self::FETCH_ALL) : array
     {
         $sql = 'SELECT * FROM `review`';
         if($add){
@@ -214,18 +219,49 @@ class DB
      * @param int $handle_status
      * @return int
      * Меняет статус handle в таблице 'source_review' по заданному хэшу.
-     * Возвращает колчество затронутых строк
+     * Возвращает колчество затронутых строк.
+     * В случае ошибки возвращает -1
      */
     public function setHandle(string $hash,int $handle_status):int
     {
-        $handleQuery=$this->pdo->prepare('UPDATE `source_review` SET `handled`=:handle
-                                                    WHERE  `source_hash`=:hash');
+        $handleQuery = $this->pdo->prepare('UPDATE `source_review` SET `handled`=:handle
+                                                      WHERE  `source_hash`=:hash');
 
         $handleQuery->bindParam(':handle',$handle_status,\PDO::PARAM_INT);
         $handleQuery->bindParam(':hash',$hash);
-        $handleQuery->execute();
+
+        try{
+            $handleQuery->execute();
+        }catch (\PDOException $e){
+            return -1;
+        }
 
         return $handleQuery->rowCount();
+    }
+
+    /**
+     * @param string|null $conf
+     * @param string $hash
+     * @return int
+     * Фнукция обновляет конфиги в БД по заданному хэшу.
+     * Возвращает количество обновлённых строк.
+     * В случае ошибки возвращает -1
+     */
+    public function updateConfig(?string $conf , string $hash):int
+    {
+        $configQuery = $this->pdo->prepare('UPDATE `source_review` SET `source_config` = :config 
+                                                      WHERE `source_hash` = :hash');
+
+        $configQuery->bindParam(':config',$conf);
+        $configQuery->bindParam(':hash',$hash);
+
+        try {
+            $configQuery->execute();
+        }catch (\PDOException $e){
+            return -1;
+        }
+        return $configQuery->rowCount();
+
     }
 
 
