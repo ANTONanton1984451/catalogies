@@ -1,5 +1,5 @@
 <?php
-
+// todo: запихнуть все в методы, типа formatData
 
 namespace parsing\platforms\google;
 

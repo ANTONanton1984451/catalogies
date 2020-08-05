@@ -1,5 +1,8 @@
 <?php
-
+// todo: reviews можно вынести в константу
+// todo: rename toHash in arrayReviewsToMd5Hash
+// todo: свести к одному return'y
+// todo: first iterate -> set something
 
 namespace parsing\platforms\google;
 
@@ -69,8 +72,7 @@ class GoogleGetter extends Getter implements GetterInterface
     {
         $this->iterator++;
 
-        if($this->trigger == 'last_iteration'){
-
+        if ($this->trigger == 'last_iteration') {
             return self::END_CODE;
         }
 
@@ -90,10 +92,12 @@ class GoogleGetter extends Getter implements GetterInterface
         }else{
 
             $this->trigger = 'last_iteration';
+            // todo: Можно запихнуть в константу
         }
 
 
         if($this->handle == 'NEW'){
+            // todo: Определиться с форматом хранения handled
 
                 $this->firstIterate($google_request['reviews'][0]);
 
@@ -102,9 +106,10 @@ class GoogleGetter extends Getter implements GetterInterface
 
                $google_request['reviews'] = $this->cutToTime($google_request['reviews'],$this->halfYearAgo);
 
-               if(!$google_request['review']){
+               if(!$google_request['reviews']){
                     return self::END_CODE;
                }
+
 
         }elseif($this->handle == 'HANDLED'){
 
@@ -118,7 +123,7 @@ class GoogleGetter extends Getter implements GetterInterface
 
                 $google_request['reviews'] = $this->cutToTime($google_request['reviews'],$this->last_review_db);
 
-                if(!$google_request['review']){
+                if(!$google_request['reviews']){
                     return self::END_CODE;
                 }
 
@@ -146,7 +151,6 @@ class GoogleGetter extends Getter implements GetterInterface
         if(isset($config['config']['last_review_date'])){
             $this->last_review_db = $config['config']['last_review_date'];
         }
-
     }
 
 
@@ -248,5 +252,4 @@ class GoogleGetter extends Getter implements GetterInterface
         $implode_array = implode($review_array_row,'');
         return md5($implode_array);
     }
-
 }

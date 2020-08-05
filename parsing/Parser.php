@@ -41,8 +41,6 @@ class Parser
     {
        $this->getter->setConfig($this->config);
 
-
-
         while ($this->status != self::END_MESSAGE){
             $buffer = $this->getter->getNextReviews();
 

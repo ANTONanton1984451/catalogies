@@ -1,6 +1,6 @@
 <?php
 // todo: Изучить тему, связанную с использованием прокси, и избеганием бана от площадок.
-
+// todo: В проверке форматов сделать подсчет отзывов
 namespace parsing\platforms\zoon;
 
 use parsing\factories\factory_interfaces\FilterInterface;
@@ -95,6 +95,8 @@ class ZoonFilter extends Filter implements FilterInterface
 
     private function clearMixData() : void
     {
+        $quantity = 0;
+
         for ($i = 0; $i < count($this->tempReviews); $i++) {
             if (!preg_match('/PGxpIGRhd/', $this->tempReviews[$i])) {
                 $quantity = $i - 1;

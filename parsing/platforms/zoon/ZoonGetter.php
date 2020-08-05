@@ -3,7 +3,8 @@
 // todo: Проверка при генерации ответа, на правильные данные
 // todo: Цеплять общую оценку заведения и количества отзывов, чтобы была возмонжость строить статистику в динамике.
 // todo: Изучить тему, связанную с использованием прокси, и избеганием бана от площадок.
-
+// todo: написать метод setConfig
+// todo: убрать множественные return'ы
 
 namespace parsing\platforms\zoon;
 
@@ -11,12 +12,13 @@ use parsing\factories\factory_interfaces\GetterInterface;
 use parsing\platforms\Getter;
 use phpQuery;
 
-class ZoonGetter extends Getter implements GetterInterface
+class ZoonGetter implements GetterInterface
 {
     const REVIEWS_LIMIT     =  5;
 
     const STATUS_OVER   = 0;
-    const STATUS_START  = 1;
+    const STATUS_START  = 1;        // t
+
     const STATUS_END    = 3;
 
     const HOST              = 'https://zoon.ru/js.php?';
