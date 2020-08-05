@@ -6,6 +6,7 @@ use Exception;
 
 use parsing\factories\factory_interfaces\ParserFactoryInterfaces;
 use parsing\factories\parsers_factory\ZoonFactory;
+use parsing\factories\parsers_factory\GoogleFactory;
 
 class ParserFactory
 {

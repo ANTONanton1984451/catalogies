@@ -21,7 +21,7 @@ class ParsingController
         $parser_factory = (new ParserFactory())->getFactory($this->platform);
 
         foreach ($this->sources as $source){
-            $parser = new Parser($source, 'handled', 'track');
+            $parser = new Parser($source);
             $parser->setGetter($parser_factory->buildGetter());
             $parser->setFilter($parser_factory->buildFilter());
             $parser->setModel($parser_factory->buildModel());
@@ -32,11 +32,21 @@ class ParsingController
     public function getActualSources($bd) {
         return
         [
-            'https://volgograd.zoon.ru/beauty/salon_krasoty_style_na_ulitse_karla_marksa/',
-            'https://volgograd.zoon.ru/restaurants/kafe_blin_klub_na_sovetskoj_ulitse/',
-            'https://volgograd.zoon.ru/restaurants/kitajskij_restoran_zolotoj_drakon_v_dzerzhinskom_rajone/',
-            'https://volgograd.zoon.ru/shops/kulinariya_konfetki-baranochki_na_prospekte_lenina-9fcd/',
-            'https://volgograd.zoon.ru/autoservice/atts_plaza/',
+            ['source'=>'accounts/101148201288830043360/locations/5839617167530752762',
+            'handle'=>'HANDLED',
+            'config'=>['token_info'=>[
+                                      'access_token'=>'ya29.a0AfH6SMBm0qdJzUEVv--ZLVzhyI_yThxf_mmZLFAYKD1objFTLqw66suupUg_GhozaDdLKxCR-liGLGonA-z9WjFvXS6NjiRpJ36559-M3tGWbd6EgDODJtV8Ro_e-q9L1Tmj4Np7ecnbAP3hw4Jck8qZWKJ7GuJZmb0',
+                                      'expires_in'=>3599,
+                                      'refresh_token'=>'1//0cd1Cb9-Zg1qzCgYIARAAGAwSNwF-L9IrJux96rezRKOQ3JcuuQ-hccinCBHbOsOlvi9M7PCdqMND8_EJgsFLobMLKdTYm_VDBmE',
+                                      'scope'=>'https://www.googleapis.com/auth/business.manage',
+                                      'token_type'=>'Bearer',
+                                      'created'=>'1596620606'
+                                     ],
+                        'last_review_date'=>1596527429,
+                        'last_review_hash'=>'d3164491'
+                      ]
+            ]
+
         ];
     }
 

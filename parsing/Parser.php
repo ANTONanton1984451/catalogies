@@ -9,6 +9,10 @@
 
 namespace parsing;
 
+use parsing\factories\factory_interfaces\FilterInterface;
+use parsing\factories\factory_interfaces\GetterInterface;
+use parsing\factories\factory_interfaces\ModelInterface;
+
 class Parser
 {
     const END_MESSAGE       = 0;
@@ -18,9 +22,7 @@ class Parser
 
     private $status;
 
-    private $source;
-    private $handled;
-    private $track;
+    private $config;
 
     private $getter;
     private $filter;
@@ -28,21 +30,19 @@ class Parser
 
     private $notifies = [];
 
-    public function __construct($source, $handled, $track)
+    public function __construct($config)
     {
         $this->status = self::ACTIVE_MESSAGE;
-        $this->source = $source;
-        $this->handled = $handled;
-        $this->track = $track;
+        $this->config = $config;
+
     }
 
     public function parseSource()
     {
-        $this->getter->setSource($this->source);
-        $this->getter->setHandled($this->handled);
-        $this->getter->setTrack($this->track);
+       $this->getter->setConfig($this->config);
 
-        /*
+
+
         while ($this->status != self::END_MESSAGE){
             $buffer = $this->getter->getNextReviews();
 
@@ -51,24 +51,24 @@ class Parser
                 continue;
             }
 
-            //$buffer = $this->filter->clearData($buffer);
-            $this->model->writeData($buffer);
-        }*/
+            $buffer = $this->filter->clearData($buffer);
+            var_dump($buffer);
+        }
     }
 
     public function generateJsonMessage() {
         return json_encode($this->notifies);
     }
 
-    public function setGetter($getter)  : void
+    public function setGetter(GetterInterface $getter)  : void
     {
         $this->getter = $getter;
     }
-    public function setFilter($filter)  : void
+    public function setFilter(FilterInterface $filter)  : void
     {
         $this->filter = $filter;
     }
-    public function setModel($model)    : void
+    public function setModel(ModelInterface $model)    : void
     {
         $this->model = $model;
     }

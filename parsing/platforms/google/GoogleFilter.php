@@ -4,13 +4,14 @@
 namespace parsing\platforms\google;
 
 
+use parsing\factories\factory_interfaces\FilterInterface;
 use parsing\platforms\Filter;
 
 /**
  * Class GoogleFilter
  * @package parsing\platforms\google
  */
-class GoogleFilter extends Filter
+class GoogleFilter extends Filter implements FilterInterface
 {
 
   private $buffer_info;
@@ -24,7 +25,7 @@ class GoogleFilter extends Filter
      * Не изменяет конфиги,а просто передаёт их дальше в буфер!!!!!!!!
      * Выдаёт конфиги,отзывы и метаданные для данного $source
      */
-  public function clearData(array $data):array
+  public function clearData($data):array
   {
 
 
@@ -35,7 +36,7 @@ class GoogleFilter extends Filter
 
              $ratingInt = $this->enumToInt($v['starRating']);
              $oneReview['platform'] = 'google';
-             $oneReview['identifier'] = json_decode(['identifier'=>$v['reviewId'],'name'=>$v['Reviewer']['displayName']]);
+             $oneReview['identifier'] = json_encode(['identifier'=>$v['reviewId'],'name'=>$v['reviewer']['displayName']]);
              $oneReview['rating'] = $ratingInt;
              $oneReview['date'] = strtotime($v['updateTime']);
              $oneReview['tonal'] = $this->intToTonal($ratingInt);
@@ -105,20 +106,19 @@ class GoogleFilter extends Filter
       }
       return 'UNDEFINED';
   }
-//ToDO:сделать здесь preg_replace
+
 
     /**
      * @param string $text
      * @return string|null
      * т.к. Большинство отзывов имеют приписку перевода на английский,который не нужен,
-     * то данный метод обрезает эту приписку
+     * и данный метод обрезает эту приписку
      */
   private function splitText(string $text):?string
   {
-      $pos=stripos($text,'(Translated by Google)');
-      $text=substr($text,0,$pos);
-
-      return trim($text);
+        $text_arr = explode('(Translated by Google)',$text);
+        $text = $text_arr[0];
+        return trim($text);
   }
 
 }
