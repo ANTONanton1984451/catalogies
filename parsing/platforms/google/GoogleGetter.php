@@ -19,6 +19,7 @@ class GoogleGetter extends Getter implements GetterInterface
     const URL = 'https://mybusiness.googleapis.com/v4/';
     const PAGE_SIZE = '50';
     const HALF_YEAR = 15552000;
+    
 
     private $client;
     private $curl;

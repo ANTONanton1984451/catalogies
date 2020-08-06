@@ -163,13 +163,14 @@ class DB
     public function getAllReview(string $hash, $add = true,$fetch = self::FETCH_ALL) : array
     {
         $sql = 'SELECT * FROM `review`';
+
         if($add){
             $sql.=' LEFT JOIN `add_info_review` ON `review`.`id`=`add_info_review`.`review_id`';
         }
 
         $sql.='WHERE `source_hash_key`= :hash';
 
-        $queryReview=$this->pdo->prepare($sql);
+        $queryReview = $this->pdo->prepare($sql);
         $queryReview->bindParam(':hash',$hash);
         $queryReview->execute();
 

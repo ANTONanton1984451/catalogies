@@ -1,5 +1,5 @@
 <?php
-// todo: запихнуть все в методы, типа formatData
+
 
 namespace parsing\platforms\google;
 
@@ -11,10 +11,11 @@ use parsing\platforms\Filter;
  * Class GoogleFilter
  * @package parsing\platforms\google
  */
-class GoogleFilter extends Filter implements FilterInterface
+class GoogleFilter implements FilterInterface
 {
 
   private $buffer_info;
+  private $buffer_info_temp;
 
 //ToDo::добавить поле имени пользователя в таблицу review
 //Todo:поменять название в таблицу и соответственно метод в классе DB
@@ -28,35 +29,53 @@ class GoogleFilter extends Filter implements FilterInterface
   public function clearData($data):array
   {
 
+       $this->buffer_info      = [];
+       $this->buffer_info_temp = [];
 
-       $this->buffer_info['meta_info'] = json_encode(['total_rating'=>$data['platform_info']['averageRating'],
-                                                        'review_count'=>$data['platform_info']['totalReviewCount']]);
+       $this->buffer_info_temp = $data;
 
-       foreach ($data['platform_info']['reviews'] as $v){
+       $this->setMetaInfo();
+       $this->formReview();
 
-             $ratingInt = $this->enumToInt($v['starRating']);
-             $oneReview['platform'] = 'google';
-             $oneReview['identifier'] = json_encode(['identifier'=>$v['reviewId'],'name'=>$v['reviewer']['displayName']]);
-             $oneReview['rating'] = $ratingInt;
-             $oneReview['date'] = strtotime($v['updateTime']);
-             $oneReview['tonal'] = $this->intToTonal($ratingInt);
-             if(isset($v['comment'])){
-                 $oneReview['text'] = $this->splitText($v['comment']);
-             }else{
-                 $oneReview['text'] = '';
-             }
+       $this->buffer_info['config'] = $this->buffer_info_temp['config'];
 
+       return $this->buffer_info;
+  }
 
-             $this->buffer_info['reviews'][] = $oneReview;
-       }
+    /**
+     * Перенос мета-информации из буферного хранилища в основное
+     */
+  private function setMetaInfo():void
+  {
+      $this->buffer_info['meta_info'] = json_encode([
+                                          'total_rating'=>$this->buffer_info_temp['platform_info']['averageRating'],
+                                          'review_count'=>$this->buffer_info_temp['platform_info']['totalReviewCount']
+                                                    ]);
+  }
 
-       $this->buffer_info['config'] = $data['config'];
+    /**
+     * Формитарует отзывы к нормальному виду
+     */
+  private function formReview():void
+  {
+      foreach ($this->buffer_info_temp['platform_info']['reviews'] as $v){
 
-       $platform_info = $this->buffer_info;
+          $ratingInt                 = $this->enumToInt($v['starRating']);
+          $oneReview['platform']     = 'google';
+          $oneReview['identifier']   = json_encode(['identifier'=>$v['reviewId'],'name'=>$v['reviewer']['displayName']]);
+          $oneReview['rating']       = $ratingInt;
+          $oneReview['date']         = strtotime($v['updateTime']);
+          $oneReview['tonal']        = $this->intToTonal($ratingInt);
 
-       $this->buffer_info = [];
+          if(isset($v['comment'])){
+              $oneReview['text'] = $this->splitText($v['comment']);
+          }else{
+              $oneReview['text'] = '';
+          }
 
-       return $platform_info;
+          $this->buffer_info['reviews'][] = $oneReview;
+      }
+
   }
 
     /**
