@@ -5,11 +5,10 @@ namespace parsing\platforms\zoon;
 
 use parsing\factories\factory_interfaces\FilterInterface;
 
-use parsing\platforms\Filter;
 use phpQuery;
 
 
-class ZoonFilter extends Filter implements FilterInterface
+class ZoonFilter implements FilterInterface
 {
     const FORMAT_SIMPLE     = 0;
     const FORMAT_HARD       = 1;
@@ -21,8 +20,7 @@ class ZoonFilter extends Filter implements FilterInterface
 
     private $doc;
 
-    public function clearData($raw_data)
-    {
+    public function clearData($raw_data) : array {
         $this->readyReviews = [];       // После каждого прохода, необходимо очистить массив
 
         $this->doc = phpQuery::newDocument($raw_data->list);
@@ -45,8 +43,19 @@ class ZoonFilter extends Filter implements FilterInterface
         return $this->readyReviews;
     }
 
-    private function clearHardData($quantity) : void
-    {
+    private function clearMixData() : void {
+        $quantity = 0;
+
+        for ($i = 0; $i < count($this->tempReviews); $i++) {
+            if (!preg_match('/PGxpIGRhd/', $this->tempReviews[$i])) {
+                $quantity = $i - 1;
+            }
+        }
+
+        $this->clearHardData($quantity);
+    }
+
+    private function clearHardData($quantity) : void {
         for ($i = 0; $i < $quantity; $i++) {
             $temp = $this->tempReviews[$i];
 
@@ -62,11 +71,11 @@ class ZoonFilter extends Filter implements FilterInterface
         $this->clearSimpleData();
     }
 
-    private function clearSimpleData() : void
-    {
+    private function clearSimpleData() : void {
         foreach ($this->tempReviews as $review)
         {
             $doc = phpQuery::newDocument($review);
+            $doc->find('ul')->remove();
 
             $date = $doc->find('.iblock.gray')->text();
             $date = $this->formatDate($date);
@@ -93,21 +102,7 @@ class ZoonFilter extends Filter implements FilterInterface
         $this->tempReviews = [];
     }
 
-    private function clearMixData() : void
-    {
-        $quantity = 0;
-
-        for ($i = 0; $i < count($this->tempReviews); $i++) {
-            if (!preg_match('/PGxpIGRhd/', $this->tempReviews[$i])) {
-                $quantity = $i - 1;
-            }
-        }
-
-        $this->clearHardData($quantity);
-    }
-
-    private function formatDate($date)
-    {
+    private function formatDate($date) : string {
         $split_date = preg_split("/\s+/", $date);
         $split_date[2] = $this->swapMonthFormat($split_date[2]);    // Замена строковой записи месяца, на числовое
 
@@ -117,10 +112,8 @@ class ZoonFilter extends Filter implements FilterInterface
         return strtotime(implode($result, '-'));
     }
 
-    private function swapMonthFormat($month)
-    {
-        switch ($month)
-        {
+    private function swapMonthFormat($month) : string {
+        switch ($month)  {
             case 'января':
                 $month = '01';
                 break;
@@ -162,8 +155,7 @@ class ZoonFilter extends Filter implements FilterInterface
         return $month;
     }
 
-    private function cutData() : void
-    {
+    private function cutData() : void {
         if ($this->format_reviews === self::FORMAT_HARD || $this->format_reviews === self::FORMAT_MIX) {
             $cutter = $this->doc->find('script')->text();
             $cutter = explode('"', $cutter);
@@ -174,17 +166,16 @@ class ZoonFilter extends Filter implements FilterInterface
         }
 
         if ($this->format_reviews === self::FORMAT_SIMPLE || $this->format_reviews === self::FORMAT_MIX) {
-            $cutter = $this->doc->find('li')->html();
-            $cutter = explode('<li', $cutter);
+            $this->doc->find('ul')->remove();
+            $cutter = $this->doc->find('li');
 
-            for ($i = 0; $i < count($cutter); $i++) {
-                $this->tempReviews[] = $cutter[$i];
+            foreach ($cutter as $item) {
+                $this->tempReviews[] = pq($item)->html();
             }
         }
     }
 
-    private function checkFormat() : void
-    {
+    private function checkFormat() : void {
         if ($this->doc->find('.comment-container.js-comment-container')->text() === '') {
             $this->format_reviews = self::FORMAT_HARD;
         } elseif ($this->doc->find('script')->text() === '') {
@@ -194,8 +185,7 @@ class ZoonFilter extends Filter implements FilterInterface
         }
     }
 
-    public function getNotifications()
-    {
+    public function getNotifications() {
         // TODO: Implement getNotifications() method.
     }
 }

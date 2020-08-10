@@ -44,6 +44,7 @@ class Parser
         while ($this->status != self::END_MESSAGE){
             $buffer = $this->getter->getNextReviews();
 
+
             if ($buffer === self::END_CODE) {
                 $this->status = self::END_MESSAGE;
                 continue;
@@ -51,6 +52,7 @@ class Parser
 
             $buffer = $this->filter->clearData($buffer);
             var_dump($buffer);
+            exit;
         }
     }
 
