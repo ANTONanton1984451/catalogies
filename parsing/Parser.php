@@ -42,14 +42,14 @@ class Parser
        $this->getter->setConfig($this->config);
 
         while ($this->status != self::END_MESSAGE){
-            $buffer = $this->getter->getNextReviews();
 
+            $buffer = $this->getter->getNextReviews();
             if ($buffer === self::END_CODE) {
                 $this->status = self::END_MESSAGE;
                 continue;
             }
-
             $buffer = $this->filter->clearData($buffer);
+
             var_dump($buffer);
         }
     }

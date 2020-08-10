@@ -14,13 +14,17 @@ use Google_Client;
  * Class GoogleGetter
  * @package parsing\platforms\google
  */
-class GoogleGetter extends Getter implements GetterInterface
+class GoogleGetter  implements GetterInterface
 {
     const URL = 'https://mybusiness.googleapis.com/v4/';
     const PAGE_SIZE = '50';
     const HALF_YEAR = 15552000;
     const LAST_ITERATION = 'last_iteration';
-    
+    const END_CODE = 42;
+
+    protected $source;
+    protected $track;
+    protected $handle;
 
     private $client;
     private $curl;
@@ -210,10 +214,9 @@ class GoogleGetter extends Getter implements GetterInterface
                     $data=array_slice($data,0,$i);
                     $this->trigger = self::LAST_ITERATION;
                     $this->mainData['platform_info']['reviews'] = $data;
+                    return;
                 }
             }
-
-
     }
 
     /**
