@@ -1,7 +1,7 @@
 <?php
 
-
 namespace parsing;
+
 use parsing\traits\Singleton;
 
 /**

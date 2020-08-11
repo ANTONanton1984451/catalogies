@@ -53,7 +53,6 @@ class ParsingController
     }
 
     public function sendMessage(){
-        // todo: Отправка сообщения об отзывах, с необходимой тональностью вне модуля
         return 'sended';
     }
 }

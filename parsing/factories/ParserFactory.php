@@ -5,6 +5,7 @@ namespace parsing\factories;
 use Exception;
 
 use parsing\factories\factory_interfaces\ParserFactoryInterfaces;
+use parsing\factories\parsers_factory\YellFactory;
 use parsing\factories\parsers_factory\ZoonFactory;
 use parsing\factories\parsers_factory\GoogleFactory;
 
@@ -17,6 +18,9 @@ class ParserFactory
                 break;
             case 'google' :
                 $factory = new GoogleFactory();
+                break;
+            case 'yell';
+                $factory = new YellFactory();
                 break;
             default :
                 throw new Exception("Неизвестный тип фабрики [{$platform}]");
