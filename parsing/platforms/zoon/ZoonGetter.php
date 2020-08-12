@@ -10,6 +10,7 @@ namespace parsing\platforms\zoon;
 
 use parsing\factories\factory_interfaces\GetterInterface;
 use phpQuery;
+use Exception;
 
 class ZoonGetter implements GetterInterface
 {
@@ -19,13 +20,10 @@ class ZoonGetter implements GetterInterface
     const STATUS_ACTIVE     = 1;
     const STATUS_END        = 2;
 
-    const END_CODE = 42;
-
     const HOST              = 'https://zoon.ru/js.php?';
     const PREFIX_SKIP       = 'skip';
 
-    const QUERY_CONST_DATA  =
-        [
+    const QUERY_CONST_DATA  = [
             'area'                                  => 'service',
             'action'                                => 'CommentList',
             'owner[]'                               => 'organization',
@@ -34,13 +32,13 @@ class ZoonGetter implements GetterInterface
             'allow_comment'                         => 0,
             'allow_share'                           => 0,
             'limit'                                 => self::REVIEWS_LIMIT,
-        ];
+    ];
 
-    private $status;                // Статус работы геттера
+    private $status;                // Статус работы Getter'a
 
-    protected $source;      // Информация, поступающая в getter из Controller'a
-    protected $track;       // Какие отзывы отслеживаем
-    protected $handled;     // Обрабатывалась ли ссылка ранее
+    protected $source;              // Информация, поступающая в Getter из Controller'a
+    protected $track;               // Флаг, который обозначает, какие отзывы мы отслеживаем по данной ссылке
+    protected $handled;             // Флаг, который обозначает, обрабатывалась ли ссылка ранее
 
     private $add_query_info = [];   // Дополнительная информация для url запроса
     private $active_list_reviews;   // Номер последнего обработанного листа с отзывами
@@ -52,7 +50,9 @@ class ZoonGetter implements GetterInterface
     }
 
     public function getNextReviews() {
-        $data = 'unused variable';
+        if ($this->status === self::STATUS_END || $this->status === self::STATUS_OVER) {
+            $data = self::END_CODE;
+        }
 
         if ($this->status == self::STATUS_ACTIVE) {
 
@@ -71,11 +71,11 @@ class ZoonGetter implements GetterInterface
             }
         }
 
-        if ($this->status == self::STATUS_END) {
-            $data = self::END_CODE;
+        if (isset($data)) {
+            return $data;
+        } else {
+            throw new Exception("Ответ не был получен");
         }
-
-        return $data;
     }
 
     private function getOrganizationId() : void {
@@ -89,6 +89,7 @@ class ZoonGetter implements GetterInterface
         $this->handled  = $config['handled'];
         $this->source   = $config['source'];
         $this->track    = $config['track'];
+
         $this->getOrganizationId();
     }
 }

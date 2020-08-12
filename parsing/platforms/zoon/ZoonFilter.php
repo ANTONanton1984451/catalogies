@@ -1,6 +1,8 @@
 <?php
 // todo: Изучить тему, связанную с использованием прокси, и избеганием бана от площадок.
 // todo: В проверке форматов сделать подсчет отзывов
+// todo: Проверка на официальный ответ
+
 namespace parsing\platforms\zoon;
 
 use parsing\factories\factory_interfaces\FilterInterface;
@@ -92,11 +94,16 @@ class ZoonFilter implements FilterInterface
                 $text_review = $text_review_short;
             }
 
-            $this->readyReviews[] = [$date, $author, $text_review];
+            $this->readyReviews[] = [
+                'identifier'    =>  $author,
+                'platform'      =>  'zoon',
+                'text'          =>  $text_review,
+                'rating'        =>  0,
+                'tonal'         =>  'NEUTRAL',
+                'date'          =>  $date,
+            ];
 
             phpQuery::unloadDocuments();
-
-            // todo: Проверка на официальный ответ
         }
 
         $this->tempReviews = [];

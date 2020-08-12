@@ -4,7 +4,8 @@ namespace parsing\factories\factory_interfaces;
 
 interface GetterInterface
 {
-    public function getNextReviews();
+    const END_CODE = 42;
 
     public function setConfig($config);
+    public function getNextReviews();
 }

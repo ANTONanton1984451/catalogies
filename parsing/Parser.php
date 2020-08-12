@@ -28,20 +28,19 @@ class Parser
 
     private $notifies = [];
 
-    public function __construct($config)
-    {
+    public function __construct($config) {
         $this->status = self::ACTIVE_MESSAGE;
         $this->config = $config;
-
     }
 
-    public function parseSource()
-    {
+    public function parseSource() {
+
        $this->getter->setConfig($this->config);
+       var_dump($this->config['source_hash']);
+       $this->model->setSourceHash($this->config['source_hash']);
 
         while ($this->status != self::END_MESSAGE){
             $buffer = $this->getter->getNextReviews();
-
 
             if ($buffer === self::END_CODE) {
                 $this->status = self::END_MESSAGE;
@@ -49,8 +48,7 @@ class Parser
             }
 
             $buffer = $this->filter->clearData($buffer);
-            var_dump($buffer);
-            exit;
+            $this->model->writeData($buffer);
         }
     }
 
@@ -58,16 +56,13 @@ class Parser
         return json_encode($this->notifies);
     }
 
-    public function setGetter(GetterInterface $getter)  : void
-    {
+    public function setGetter(GetterInterface $getter)  : void {
         $this->getter = $getter;
     }
-    public function setFilter(FilterInterface $filter)  : void
-    {
+    public function setFilter(FilterInterface $filter)  : void {
         $this->filter = $filter;
     }
-    public function setModel(ModelInterface $model)    : void
-    {
+    public function setModel(ModelInterface $model)    : void {
         $this->model = $model;
     }
 }
