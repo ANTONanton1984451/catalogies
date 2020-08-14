@@ -23,7 +23,7 @@ class YellGetter implements GetterInterface
         $this->add_query_info['page'] = $this->active_list_reviews;
     }
 
-    public function getNextReviews() {
+    public function getNextRecords() {
         $data = file_get_contents(self::HOST . http_build_query($this->add_query_info));
         if (strlen($data) == 64) {
             $data = self::END_CODE;

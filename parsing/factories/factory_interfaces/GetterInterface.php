@@ -7,5 +7,5 @@ interface GetterInterface
     const END_CODE = 42;
 
     public function setConfig($config);
-    public function getNextReviews();
+    public function getNextRecords();
 }

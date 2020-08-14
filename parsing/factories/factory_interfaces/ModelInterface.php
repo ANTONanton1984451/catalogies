@@ -4,6 +4,6 @@ namespace parsing\factories\factory_interfaces;
 
 interface ModelInterface
 {
-    public function setSourceHash($source_hash);
+    public function setConfig($config);
     public function writeData($reviews);
 }

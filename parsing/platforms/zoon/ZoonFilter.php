@@ -1,55 +1,86 @@
 <?php
 // todo: Изучить тему, связанную с использованием прокси, и избеганием бана от площадок.
-// todo: В проверке форматов сделать подсчет отзывов
 // todo: Проверка на официальный ответ
+
+// todo: Проверить, нужен ли массив readyRecords, и tempRecords
+// todo: Проверить, необходимо ли делать приведение типов
+// todo: Подумать о необходимости этого формата FORMAT_META
+// todo: Сделать нормальный механизм запуска clearHardData
+// todo: По возможности избавиться от регулярых выражений
+// todo: Проверить, можно ли избавиться от cutData
+// todo: В случае, если отзыв был отредактирован, забирать эту дату
+// todo: Сделать нормальный перебор, для clearHardData
+// todo: Разбить на функции clearSimpleData
+// todo: Подумать над тем, что clearMixData может быть убрана за ненадобностью, либо отрефакторена
+// todo: Сделать checkFormat более явным
+// todo: Сделать явный вызов clear-функций друг у друга
 
 namespace parsing\platforms\zoon;
 
 use parsing\factories\factory_interfaces\FilterInterface;
-
 use phpQuery;
-
 
 class ZoonFilter implements FilterInterface
 {
     const FORMAT_SIMPLE     = 0;
     const FORMAT_HARD       = 1;
     const FORMAT_MIX        = 2;
+    const FORMAT_META       = 3;
 
-    private $format_reviews;
-    private $tempReviews = [];
-    private $readyReviews = [];
+    private $format_records;
 
-    private $doc;
+    private $tempRecords = [];
+    private $readyRecords = [];
+
+    private $config;
+    private $document;
+
+    public function setConfig($config) : void {
+        $this->config = $config;
+    }
 
     public function clearData($raw_data) : array {
-        $this->readyReviews = [];       // После каждого прохода, необходимо очистить массив
+        $this->readyRecords = [];       // После каждого прохода, необходимо очистить массив
 
-        $this->doc = phpQuery::newDocument($raw_data->list);
-        $this->checkFormat();
-        $this->cutData();
-        phpQuery::unloadDocuments();
-
-        if ($this->format_reviews === self::FORMAT_SIMPLE) {
-            $this->clearSimpleData();
+        if (is_object($raw_data)){
+            // todo: Инкапсулировать все это в одну функцию, обработки отзывов
+            $this->document = phpQuery::newDocument($raw_data->list);
+            $this->checkFormat();
+            $this->cutData();
+            phpQuery::unloadDocuments();
         }
 
-        if ($this->format_reviews === self::FORMAT_HARD) {
-            $this->clearHardData(count($this->tempReviews));
+        if (is_array($raw_data)) {
+            $raw_data = (object) $raw_data;
+            $this->format_records = self::FORMAT_META;
         }
 
-        if ($this->format_reviews === self::FORMAT_MIX) {
-            $this->clearMixData();
+        switch ($this->format_records) {
+            case self::FORMAT_HARD:
+                $this->clearHardData(count($this->tempRecords));
+                break;
+
+            case self::FORMAT_MIX:
+                $this->clearMixData();
+                break;
+
+            case self::FORMAT_SIMPLE:
+                $this->clearSimpleData();
+                break;
+
+            case self::FORMAT_META:
+                $this->readyRecords = $raw_data;
+                break;
         }
 
-        return $this->readyReviews;
+        return $this->readyRecords;
     }
 
     private function clearMixData() : void {
         $quantity = 0;
 
-        for ($i = 0; $i < count($this->tempReviews); $i++) {
-            if (!preg_match('/PGxpIGRhd/', $this->tempReviews[$i])) {
+        for ($i = 0; $i < count($this->tempRecords); $i++) {
+            if (!preg_match('/PGxpIGRhd/', $this->tempRecords[$i])) {
                 $quantity = $i - 1;
             }
         }
@@ -59,22 +90,19 @@ class ZoonFilter implements FilterInterface
 
     private function clearHardData($quantity) : void {
         for ($i = 0; $i < $quantity; $i++) {
-            $temp = $this->tempReviews[$i];
-
+            $temp = $this->tempRecords[$i];
             $temp = str_replace("A", "@", $temp);
             $temp = str_replace("=", "A", $temp);
             $temp = str_replace("@", "=", $temp);
-
             $temp = base64_decode($temp);
-
-            $this->tempReviews[$i] = $temp;
+            $this->tempRecords[$i] = $temp;
         }
 
         $this->clearSimpleData();
     }
 
     private function clearSimpleData() : void {
-        foreach ($this->tempReviews as $review)
+        foreach ($this->tempRecords as $review)
         {
             $doc = phpQuery::newDocument($review);
             $doc->find('ul')->remove();
@@ -86,7 +114,7 @@ class ZoonFilter implements FilterInterface
             $text_review_short = $doc->find('.js-comment-short-text.comment-text span')->text();
             $text_review_long = $doc->find('.js-comment-additional-text.hidden')->text();
 
-            $author = $doc->find('span.name')->text();
+            $identifier = $doc->find('span.name')->text();
 
             if ($text_review_long != '') {
                 $text_review = $text_review_short . $text_review_long;
@@ -94,19 +122,16 @@ class ZoonFilter implements FilterInterface
                 $text_review = $text_review_short;
             }
 
-            $this->readyReviews[] = [
-                'identifier'    =>  $author,
-                'platform'      =>  'zoon',
+            $this->readyRecords[] = [
                 'text'          =>  $text_review,
-                'rating'        =>  0,
-                'tonal'         =>  'NEUTRAL',
                 'date'          =>  $date,
+                'identifier'    =>  $identifier,
             ];
 
             phpQuery::unloadDocuments();
         }
 
-        $this->tempReviews = [];
+        $this->tempRecords = [];
     }
 
     private function formatDate($date) : string {
@@ -163,36 +188,32 @@ class ZoonFilter implements FilterInterface
     }
 
     private function cutData() : void {
-        if ($this->format_reviews === self::FORMAT_HARD || $this->format_reviews === self::FORMAT_MIX) {
-            $cutter = $this->doc->find('script')->text();
+        if ($this->format_records !== self::FORMAT_SIMPLE) {
+            $cutter = $this->document->find('script')->text();
             $cutter = explode('"', $cutter);
 
             for ($i = 1; $i < count($cutter); $i += 2) {
-                $this->tempReviews[] = $cutter[$i];
+                $this->tempRecords[] = $cutter[$i];
             }
         }
 
-        if ($this->format_reviews === self::FORMAT_SIMPLE || $this->format_reviews === self::FORMAT_MIX) {
-            $this->doc->find('ul')->remove();
-            $cutter = $this->doc->find('li');
+        if ($this->format_records !== self::FORMAT_HARD) {
+            $this->document->find('ul')->remove();
+            $cutter = $this->document->find('li');
 
             foreach ($cutter as $item) {
-                $this->tempReviews[] = pq($item)->html();
+                $this->tempRecords[] = pq($item)->html();
             }
         }
     }
 
     private function checkFormat() : void {
-        if ($this->doc->find('.comment-container.js-comment-container')->text() === '') {
-            $this->format_reviews = self::FORMAT_HARD;
-        } elseif ($this->doc->find('script')->text() === '') {
-            $this->format_reviews = self::FORMAT_SIMPLE;
+        if ($this->document->find('.comment-container.js-comment-container')->text() === '') {
+            $this->format_records = self::FORMAT_HARD;
+        } elseif ($this->document->find('script')->text() === '') {
+            $this->format_records = self::FORMAT_SIMPLE;
         } else {
-            $this->format_reviews = self::FORMAT_MIX;
+            $this->format_records = self::FORMAT_MIX;
         }
-    }
-
-    public function getNotifications() {
-        // TODO: Implement getNotifications() method.
     }
 }

@@ -1,31 +1,37 @@
 <?php
-// todo: refactor, однозначно
+namespace parsing\DB;
 
+use Exception;
 use Medoo\Medoo;
+use PDO;
 
-class DbMigrationsController {
+class MigrationsManager {
     private $database;
 
-    const TASK_QUEUE_TABLE          = 0;
-    const ADD_INFO_REVIEW_TABLE     = 1;
-    const REVIEW_TABLE              = 2;
-    const SOURCE_REVIEW             = 3;
+    const TASK_QUEUE_TABLE          = 'task_queue';
+    const REVIEW_TABLE              = 'review';
+    const SOURCE_REVIEW             = 'source_review';
 
     const SCHEMAS = [
-        self::TASK_QUEUE_TABLE          =>  'task_queue',
-        self::ADD_INFO_REVIEW_TABLE     =>  'add_info_review',
-        self::REVIEW_TABLE              =>  'review',
-        self::SOURCE_REVIEW             =>  'source_review',
+        self::TASK_QUEUE_TABLE,
+        self::REVIEW_TABLE,
+        self::SOURCE_REVIEW,
     ];
 
     public function __construct() {
         $this->database = $this->getConnection();
     }
 
-    public function createTables() {
+    public function createSchema() {
         foreach (self::SCHEMAS as $item) {
-            $this->createTable($item);
+            try {
+                $this->createTable($item);
+            } catch (Exception $e) {
+                $this->dropTables();
+                break;
+            }
         }
+
         $this->setForeignKey();
     }
 
@@ -35,93 +41,56 @@ class DbMigrationsController {
         }
     }
 
-    public function seedDB() {
-        for ($i = 0; $i < 10000; $i++) {
-            $this->database->insert(self::SCHEMAS[self::SOURCE_REVIEW], [
-                'source_hash' => md5($i),
-                'platform' => 'yell',
-                'source' => $i,
-                'source_meta_info' => 'meta' . $i,
-                'source_config' => 'config' . $i,
-                'actual' => 'ACTIVE',
-                'track' => 'ALL',
-                'handled' => 'HANDLED'
-            ]);
-        }
-
-        for ($i = 0; $i < 100; $i++) {
-            $this->database->insert(self::SCHEMAS[self::TASK_QUEUE_TABLE], [
-                'source_hash_key'       =>  md5($i),
-                'status'                =>  'WAIT',
-                'action'                =>  'NOTHING'
-            ]);
-        }
-
-        for ($i = 0; $i < 10000; $i++) {
-            $this->database->insert(self::SCHEMAS[self::REVIEW_TABLE], [
-                'source_hash_key'           =>  md5($i),
-                'platform'                  =>  'yell',
-                'text'                      =>  'commentary #' . $i,
-                'rating'                    =>  ($i % 10),
-                'tonal'                     =>  'NEUTRAL',
-                'date'                      =>  $i * 2,
-            ]);
-        }
-
-        for ($i = 1; $i < 1000; $i++) {
-            $this->database->insert(self::SCHEMAS[self::ADD_INFO_REVIEW_TABLE], [
-                'review_id'                 =>  $i,
-                'identifier'                =>  'identifier #' . $i,
-            ]);
-        }
-    }
-
     private function createTable($name) {
-        switch ($name) {
 
-            case self::SCHEMAS[self::SOURCE_REVIEW]:
-                $this->database->create(self::SCHEMAS[self::SOURCE_REVIEW],[
-                    "source_hash"           =>  [
+        switch ($name) {
+            case self::SOURCE_REVIEW:
+                $this->database->create(self::SOURCE_REVIEW,[
+                    "source_hash"           => [
                         "VARCHAR(40)",
                         "NOT NULL",
                         "PRIMARY KEY"
                     ],
-                    "platform"              =>  [
+                    "platform"              => [
                         "ENUM('yandex', 'topdealers', 'google', 'zoon', 'yell', 'twogis')",
                         "NOT NULL"
                     ],
-                    "source"                =>  [
+                    "source"                => [
                         "LONGTEXT",
                         "NOT NULL"
                     ],
-                    "source_meta_info"      =>  [
+                    "source_meta_info"      => [
                         "LONGTEXT"
                     ],
-                    "source_config"         =>  [
+                    "source_config"         => [
                         "LONGTEXT"
                     ],
-                    "actual"                =>  [
+                    "actual"                => [
                         "ENUM('UNACTIVE', 'ACTIVE')",
                         "NOT NULL"
                     ],
-                    "track"                 =>  [
+                    "track"                 => [
                         "ENUM('ALL', 'NEGATIVE', 'NONE')",
                         "NOT NULL"
                     ],
-                    "handled"               =>  [
+                    "handled"               => [
                         "ENUM('NEW', 'HANDLED')",
                         "NOT NULL"
                     ],
                 ]);
                 break;
 
-            case self::SCHEMAS[self::REVIEW_TABLE]:
-                $this->database->create(self::SCHEMAS[self::REVIEW_TABLE], [
+            case self::REVIEW_TABLE:
+                $this->database->create(self::REVIEW_TABLE, [
                     "id"                => [
                         "INT",
                         "NOT NULL",
                         "AUTO_INCREMENT",
                         "PRIMARY KEY"
+                    ],
+                    "identifier"    => [
+                        "LONGTEXT",
+                        "NOT NULL"
                     ],
                     "source_hash_key"   => [
                         "VARCHAR(40)"
@@ -147,23 +116,8 @@ class DbMigrationsController {
                 ]);
                 break;
 
-            case self::SCHEMAS[self::ADD_INFO_REVIEW_TABLE]:
-                $this->database->create(self::SCHEMAS[self::ADD_INFO_REVIEW_TABLE], [
-                    "review_id"     => [
-                        "INT",
-                        "NOT NULL",
-                        "PRIMARY KEY",
-                        "UNIQUE"
-                    ],
-                    "identifier"    => [
-                        "LONGTEXT",
-                        "NOT NULL"
-                    ],
-                ]);
-                break;
-
-            case self::SCHEMAS[self::TASK_QUEUE_TABLE]:
-                $this->database->create(self::SCHEMAS[self::TASK_QUEUE_TABLE], [
+            case self::TASK_QUEUE_TABLE:
+                $this->database->create(self::TASK_QUEUE_TABLE, [
                     "id"         => [
                         "INT",
                         "NOT NULL",
@@ -183,6 +137,9 @@ class DbMigrationsController {
                     ]
                 ]);
                 break;
+
+            default:
+                throw new Exception('В перечне таблиц присутствует имя, для которой не написано миграции');
         }
     }
 
@@ -192,13 +149,6 @@ class DbMigrationsController {
                         ADD FOREIGN KEY (source_hash_key) 
                         REFERENCES source_review(source_hash)
                         ON DELETE SET NULL 
-        ");
-
-        $this->database->query("
-                        ALTER TABLE add_info_review
-                        ADD FOREIGN KEY (review_id)
-                        REFERENCES review(id)
-                        ON DELETE CASCADE 
         ");
 
         $this->database->query("
