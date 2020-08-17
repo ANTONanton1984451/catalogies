@@ -21,27 +21,32 @@ class Parser
     private $getter;
     private $filter;
     private $model;
-    
 
+    private $config;
 
     private $notifies = [];
 
+    public function __construct($config)
+    {
+        $this->config = $config;
+    }
+
     public function parseSource() {
-        $this->getter->setConfig($config);
-        $this->filter->setConfig($config);
-        $this->model->setConfig($config);
+        $this->getter->setConfig($this->config);
+        $this->filter->setConfig($this->config);
+        $this->model->setConfig($this->config);
 
 
         while ($this->status != self::MESSAGE_END) {
-            $buffer = $this->getter->getNextReviews();
+            $buffer = $this->getter->getNextRecords();
 
             if ($buffer === self::END_CODE) {
                 $this->status = self::MESSAGE_END;
                 continue;
             }
             $buffer = $this->filter->clearData($buffer);
-
-            $this->model->writeReviews($buffer);
+            var_dump($buffer);
+            $this->model->writeData($buffer);
 
         }
     }

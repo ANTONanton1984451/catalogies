@@ -41,6 +41,10 @@ class GoogleFilter implements FilterInterface
 
        return $this->buffer_info;
   }
+  public function setConfig($config)
+  {
+      // TODO: Implement setConfig() method.
+  }
 
     /**
      * Перенос мета-информации из буферного хранилища в основное
@@ -61,7 +65,7 @@ class GoogleFilter implements FilterInterface
       foreach ($this->buffer_info_temp['platform_info']['reviews'] as $v){
 
           $ratingInt                 = $this->enumToInt($v['starRating']);
-          $oneReview['platform']     = 'google';
+
           $oneReview['identifier']   = json_encode(['identifier'=>$v['reviewId'],'name'=>$v['reviewer']['displayName']]);
           $oneReview['rating']       = $ratingInt;
           $oneReview['date']         = strtotime($v['updateTime']);
@@ -105,7 +109,7 @@ class GoogleFilter implements FilterInterface
               return -1;
       }
   }
-//ToDo::сделать поле в енаме по типу "Неопределенно"
+
 
     /**
      * @param int $rating

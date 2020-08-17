@@ -30,6 +30,16 @@ class ParserManager
     }
 
     private function getActualSources() {
-        return (new DatabaseShell())->getActualSourceReviews();
+//        return (new DatabaseShell())->getActualSourceReviews();
+        return [
+            [
+                'source'=>'https://topdealers.ru/brands/kia/moskva/2406/',
+                'handle'=>'NEW',
+                'platform'=>'topdealers',
+                'source_hash'=>'dsfsfs',
+                'config'=>[]
+            ]
+
+               ];
     }
 }

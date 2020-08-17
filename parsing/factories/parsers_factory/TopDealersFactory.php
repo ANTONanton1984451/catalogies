@@ -4,6 +4,7 @@
 namespace parsing\factories\parsers_factory;
 
 
+use parsing\DB\DatabaseShell;
 use parsing\factories\factory_interfaces\FilterInterface;
 use parsing\factories\factory_interfaces\GetterInterface;
 use parsing\factories\factory_interfaces\ModelInterface;
@@ -16,7 +17,7 @@ class TopDealersFactory implements ParserFactoryInterfaces
 {
     public function buildModel(): ModelInterface
     {
-        return new TopDealersModel();
+        return new TopDealersModel(new DatabaseShell());
     }
     public function buildGetter(): GetterInterface
     {

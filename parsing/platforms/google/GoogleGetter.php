@@ -4,7 +4,6 @@
 namespace parsing\platforms\google;
 
 use parsing\factories\factory_interfaces\GetterInterface;
-use parsing\platforms\Getter;
 use Google_Client;
 
 /**
@@ -17,7 +16,7 @@ class GoogleGetter  implements GetterInterface
     const PAGE_SIZE = '50';
     const HALF_YEAR = 15552000;
     const LAST_ITERATION = 'last_iteration';
-    const END_CODE = 42;
+
 
     protected $source;
     protected $track;
@@ -142,7 +141,7 @@ class GoogleGetter  implements GetterInterface
         $this->handle = $config['handle'];
         $this->mainData['config'] = $config['config'];
 
-        if(isset($config['config']['last_review_date'])){
+        if(@isset($config['config']['last_review_date'])){
             $this->last_review_db = $config['config']['last_review_date'];
         }
 

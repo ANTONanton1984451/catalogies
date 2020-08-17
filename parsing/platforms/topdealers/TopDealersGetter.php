@@ -3,33 +3,33 @@
 
 namespace parsing\platforms\topdealers;
 
-
 use parsing\factories\factory_interfaces\GetterInterface;
+
+/**
+ * Class TopDealersGetter
+ * @package parsing\platforms\topdealers
+ */
 
 class TopDealersGetter implements GetterInterface
 {
-    const RESPONSES_URN  = 'responses/';
-    const END_CODE       = 42;
-    const EMPTY          = -666;
-    const MAIN_URL       = 'https://topdealers.ru';
-    const BAD_CONNECTION = '-666';
-    const HALF_YEAR      = 15552000;
-    const FAKE_HASH      = 'abc';
-
+   private const RESPONSES_URN  = 'responses/';
+   private const MAIN_URL       = 'https://topdealers.ru';
+   private const BAD_CONNECTION = '-666';                   //ответ при отсутствии соединения с донором
+   private const HALF_YEAR      = 15552000;
 
     private $config;
     private $source;
     private $handled;
 
-    private $iterator      = 0;
+    private $iterator = 0;
     private $half_Year_Ago;
 
     private $MainPage;
     private $ResponsesPage;
     private $FullResponsePage;
 
-    private $trigger = 1;
     private $last_date_review_db;
+
     private $mainData;
 
 
@@ -38,7 +38,11 @@ class TopDealersGetter implements GetterInterface
         $this->half_Year_Ago = time() - self::HALF_YEAR;
     }
 
-    public function getNextReviews()
+    /**
+     * @return int|array
+     * Метод выполняет получает отзывы и взависимости от флага handled применяет разные алгоритмы для получения отзывов
+     */
+    public function getNextRecords()
     {
         $this->checkIteration();
         $this->MainPage = $this->getContent($this->source);
@@ -67,20 +71,31 @@ class TopDealersGetter implements GetterInterface
         return $this->mainData;
     }
 
-
+    /**
+     * @param $config
+     * Установка конфигов,необходимых для парсинга
+     */
     public function setConfig($config)
     {
         $this->source  = $config['source'];
-        $this->handled = $config['handled'];
+        $this->handled = $config['handle'];
         $this->config  = $config['config'];
     }
 
+    /**
+     * Установка в буфер даты последнего отзыва
+     */
     private function parseConfig():void
     {
         $this->last_date_review_db = $this->config['last_review_date'];
     }
 
-
+    /**
+     * @param string $url
+     * @return string|null
+     * Получение нужной страницы,в случае успешного подключения.
+     * В противном случае
+     */
     private function getContent(string $url):?string
     {
         if($this->checkURL($url)){
@@ -90,6 +105,10 @@ class TopDealersGetter implements GetterInterface
         }
     }
 
+    /**
+     * @param int $defaultDate
+     * Установка конфигов доты,в случае,если отзывов нет,то устанавливается дефолтное значение
+     */
     private function setSourceConfig(int $defaultDate):void
     {
         if(!empty($this->mainData['reviews'])){
@@ -100,10 +119,9 @@ class TopDealersGetter implements GetterInterface
 
     }
 
-
-
-
-
+    /**
+     * Установка мета-информации
+     */
     private function setMetaInfo():void
     {
         $rating = $this->MainPage->find('.overall-rating tbody td');
@@ -125,7 +143,11 @@ class TopDealersGetter implements GetterInterface
     }
 
 
-
+    /**
+     * @param int $date
+     * Основной метод Геттера.
+     * Собирает отзывы до указанной даты и кладёт их в переменную $mainData
+     */
     private function setReviews(int $date):void
     {
         $this->ResponsesPage = $this->getContent($this->source . self::RESPONSES_URN);
@@ -140,19 +162,23 @@ class TopDealersGetter implements GetterInterface
 
     }
 
-
+    /**
+     * С помощью phpQuery парсим отзывы.
+     * В случае,если отзыв неполный,то применяется доп.метод,который подбирает новый отзыв
+     */
     private function parseReviews():void
     {
-        $responses=$this->ResponsesPage->find('div[id^="resp"] .info');       //находим карточку товара
+        $responses=$this->ResponsesPage->find('div[id^="resp"] .info');                         //находим карточку товара
 
-        foreach ($responses as $v){//разбираем эту карточку
+        foreach ($responses as $v){                                                             //разбираем эту карточку
 
             $responseFullInfo['tonal'] = trim(pq($v)->find('.comment-type')->text());  //тональность оценки
-            $responseFullInfo['title'] = pq($v)->find('.title')->text();                      //заголовок отзыва
-            $responseFullInfo['identifier'] = pq($v)->find('.name')->text();                  //имя юзера
+            $responseFullInfo['title'] = pq($v)->find('.title')->text();               //заголовок отзыва
+            $responseFullInfo['identifier'] = pq($v)->find('.name')->text();           //имя юзера
 
             $iterator = 1;
-            foreach (pq($v)->find('.date-list dd') as $value){                                  //дата отзыва
+
+            foreach (pq($v)->find('.date-list dd') as $value){                         //дата отзыва
                 if($iterator%2 == 0){
                     $responseFullInfo['date']=strtotime(pq($value)->text());
                 }
@@ -160,7 +186,7 @@ class TopDealersGetter implements GetterInterface
             }
             if(pq($v)->find('p[class="read_all"]')->text()){//если ответ не полный,то редирект на страницу полного отзыва
 
-                $fullReviewUrl = self::MAIN_URL.pq($v)->find('p[class="read_all"] a')->attr('href');
+                $fullReviewUrl = self::MAIN_URL . pq($v)->find('p[class="read_all"] a')->attr('href');
                 $responseFullInfo["text"]=$this->getFullReview($fullReviewUrl);
 
             }else{
@@ -171,16 +197,26 @@ class TopDealersGetter implements GetterInterface
         }
     }
 
-
+    /**
+     * @param string $url
+     * @return string
+     * По юрл забирает полный отзыв пользователя
+     */
     private function getFullReview(string $url):string
     {
         $this->FullResponsePage = $this->getContent($url);
-        $this->HTML_to_DOM($this->FullResponsePage);
 
-        return $this->FullResponsePage->find('.info p')->text();
+        if($this->FullResponsePage !== self::BAD_CONNECTION){
+            $this->HTML_to_DOM($this->FullResponsePage);
+            return $this->FullResponsePage->find('.info p')->text();
+        }
+        return 'Нет полной страницы';
     }
 
-
+    /**
+     * @param int $timeBreak
+     * Обрезает отзывы до указанной временной метки
+     */
     private function cutReviewsToTime(int $timeBreak):void
     {
         $data = $this->mainData['reviews'];
@@ -198,12 +234,18 @@ class TopDealersGetter implements GetterInterface
 
     }
 
+    /**
+     * @param $html
+     * преобразовывает HTML документ в объект phpQuery
+     */
     private function HTML_to_DOM(&$html):void
     {
         $html = \phpQuery::newDocument($html);
     }
 
-
+    /**
+     * Проверяет итерацию,если итераций в цикле больше одной-заканчивает работу геттера
+     */
     private function checkIteration():void
     {
         $this->iterator++;
@@ -213,6 +255,11 @@ class TopDealersGetter implements GetterInterface
         }
     }
 
+    /**
+     * @param string $url
+     * @return bool
+     * Проверяет URL на ответ сервера
+     */
     private function checkURL(string $url):bool
     {
     $response = get_headers($url);
