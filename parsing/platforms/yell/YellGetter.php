@@ -7,44 +7,64 @@ use phpQuery;
 
 class YellGetter implements GetterInterface
 {
-    const END_CODE = 42;
+    const STATUS_REVIEWS        = 0;
+    const STATUS_END            = 1;
 
     const HOST = 'https://www.yell.ru/company/reviews/?';
 
-    private $active_list_reviews;
-    private $add_query_info = ['sort' => 'recent'];
+    private $status;
+    private $source;
 
-    protected $source;      // Информация, поступающая в getter из Controller'a
-    protected $track;       // Какие отзывы отслеживаем
-    protected $handled;     // Обрабатывалась ли ссылка ранее
+    private $addQueryInfo;
+    private $activeList;
 
     public function __construct() {
-        $this->active_list_reviews = 1;
-        $this->add_query_info['page'] = $this->active_list_reviews;
+        $this->status = self::STATUS_REVIEWS;
+
+        $this->addQueryInfo =   ['sort' => 'recent'];
+        $this->activeList   =   1;
+    }
+
+    public function setConfig($config) {
+        $this->source = $config['source'];
+        $this->getOrganizationId();
     }
 
     public function getNextRecords() {
-        $data = file_get_contents(self::HOST . http_build_query($this->add_query_info));
-        if (strlen($data) == 64) {
-            $data = self::END_CODE;
+        switch ($this->status) {
+            case self::STATUS_REVIEWS:
+                $records = $this->getReviews();
+                if (strlen($records) == 64) {
+                    $records = $this->getMetaInfo();
+                }
+                break;
+
+            case self::STATUS_END:
+                $records = $this->getEndCode();
+                break;
         }
 
-        $this->add_query_info['page'] = $this->active_list_reviews++;
-
-        return $data;
+        return $records;
     }
 
-    public function setConfig($config) : void {
-        $this->handled  = $config['handled'];
-        $this->source   = $config['source'];
-        $this->track    = $config['track'];
-        $this->getOrganizationId();
+    private function getReviews() {
+        $records = file_get_contents(self::HOST . http_build_query($this->addQueryInfo));
+        $this->addQueryInfo['page'] = $this->activeList++;
+        return $records;
+    }
+
+    private function getEndCode() {
+        return self::END_CODE;
     }
 
     private function getOrganizationId() : void {
         $source_page = file_get_contents($this->source);
         $doc = phpQuery::newDocument($source_page);
-        $this->add_query_info['id'] = $doc->find('.company.company_paid')->attr('data-id');
+        $this->addQueryInfo['id'] = $doc->find('.company.company_default')->attr('data-id');
         phpQuery::unloadDocuments();
+    }
+
+    private function getMetaInfo() {
+        return 'meta';
     }
 }

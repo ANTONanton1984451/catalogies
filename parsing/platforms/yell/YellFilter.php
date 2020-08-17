@@ -27,4 +27,9 @@ class YellFilter implements FilterInterface
 
         return $this->temp_reviews;
     }
+
+    public function setConfig($config)
+    {
+        $config1 = $config;
+    }
 }

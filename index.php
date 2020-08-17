@@ -19,11 +19,11 @@ $manager->parseSources();
 //setSource();
 
 function setSource() {
-    $source = 'https://volgograd.zoon.ru/restaurants/kapuchino_v_krasnooktyabrskom_rajone/';
+    $source = 'https://www.yell.ru/spb/com/restoran-stroganoff-steak-house-na-admiraltejskoj_11890813/';
     $db = new \parsing\DB\DatabaseShell();
     $db->insertSourceReview([
         'source_hash'   =>  md5($source),
-        'platform'      =>  'zoon',
+        'platform'      =>  'yell',
         'source'        =>  $source,
         'actual'        =>  'ACTIVE',
         'track'         =>  'ALL',

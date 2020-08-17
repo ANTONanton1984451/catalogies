@@ -15,7 +15,7 @@ class ZoonGetter implements GetterInterface
 {
     const REVIEWS_LIMIT     =  100;
 
-    const STATUS_REVIEWS         = 0;
+    const STATUS_REVIEWS        = 0;
     const STATUS_SOURCE_REVIEW  = 1;
     const STATUS_END            = 2;
 

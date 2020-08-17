@@ -38,13 +38,16 @@ class Parser
         while ($this->status != self::MESSAGE_END) {
             $buffer = $this->getter->getNextRecords();
 
-            if ($buffer === self::END_CODE) {
-                $this->status = self::MESSAGE_END;
-                continue;
-            }
+            var_dump($buffer);
+            exit();
 
-            $buffer = $this->filter->clearData($buffer);
-            $this->model->writeData($buffer);
+//            if ($buffer === self::END_CODE) {
+//                $this->status = self::MESSAGE_END;
+//                continue;
+//            }
+//
+//            $buffer = $this->filter->clearData($buffer);
+//            $this->model->writeData($buffer);
         }
     }
 
