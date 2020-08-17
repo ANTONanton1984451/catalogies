@@ -69,7 +69,7 @@ class GoogleGetter extends Getter implements GetterInterface
      *
      *
      */
-    public function getNextReviews()
+    public function getNextRecords()
     {
         $this->iterator++;
 

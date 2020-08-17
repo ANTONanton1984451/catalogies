@@ -1,11 +1,7 @@
 <?php
-// todo: Перенести готовые парсеры из предыдущей архитектуры, в директорию platforms и разбить на модули
-// todo: Проверка на соответствие сообщения необходимой тональности
-// todo: Если найдена искомая тональность, добавить данный отзыв в массив $notifies
-// todo: В зависимости от модели прописать логику сохранения отзыва в БД
-// todo: Запись мета-данных в БД
-// todo: Сделать при помощи контейнера зависимостей вызов конструкторов getter, filter and model
-// todo: Возможно необходимы сеттеры и для фильтра, учесть
+// todo: Добавлять notifies для каждого нового отзыва
+// todo: Проверить, как будет вести себя проверка, если заместо массива, будет объект проверяться в if
+// todo:
 
 namespace parsing;
 
@@ -15,14 +11,12 @@ use parsing\factories\factory_interfaces\ModelInterface;
 
 class Parser
 {
-    const END_MESSAGE       = 0;
-    const ACTIVE_MESSAGE    = 1;
+    const MESSAGE_END       = 0;
+    const MESSAGE_START     = 1;
 
-    const END_CODE      = 42;
+    const END_CODE          = 42;
 
-    private $status;
-
-    private $config;
+    private $status = self::MESSAGE_START;
 
     private $getter;
     private $filter;
@@ -30,44 +24,35 @@ class Parser
 
     private $notifies = [];
 
-    public function __construct($config)
-    {
-        $this->status = self::ACTIVE_MESSAGE;
-        $this->config = $config;
+    public function parseSource() {
+        $this->getter->setConfig($config);
+        $this->filter->setConfig($config);
+        $this->model->setConfig($config);
 
-    }
-
-    public function parseSource()
-    {
-       $this->getter->setConfig($this->config);
-
-        while ($this->status != self::END_MESSAGE){
+        while ($this->status != self::MESSAGE_END) {
             $buffer = $this->getter->getNextReviews();
 
             if ($buffer === self::END_CODE) {
-                $this->status = self::END_MESSAGE;
+                $this->status = self::MESSAGE_END;
                 continue;
             }
 
             $buffer = $this->filter->clearData($buffer);
-            var_dump($buffer);
+            $this->model->writeReviews($buffer);
         }
+    }
+
+    public function setGetter(GetterInterface $getter)  : void {
+        $this->getter = $getter;
+    }
+    public function setFilter(FilterInterface $filter)  : void {
+        $this->filter = $filter;
+    }
+    public function setModel(ModelInterface $model)    : void {
+        $this->model = $model;
     }
 
     public function generateJsonMessage() {
         return json_encode($this->notifies);
-    }
-
-    public function setGetter(GetterInterface $getter)  : void
-    {
-        $this->getter = $getter;
-    }
-    public function setFilter(FilterInterface $filter)  : void
-    {
-        $this->filter = $filter;
-    }
-    public function setModel(ModelInterface $model)    : void
-    {
-        $this->model = $model;
     }
 }

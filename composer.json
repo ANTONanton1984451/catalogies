@@ -2,6 +2,8 @@
     "require": {
         "electrolinux/phpquery": "^0.9.6",
         "ext-json": "*",
-        "google/apiclient": "^2.7"
+        "google/apiclient": "^2.7",
+        "catfan/medoo": "^1.7",
+        "ext-pdo": "*"
     }
 }
