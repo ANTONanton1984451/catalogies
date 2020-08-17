@@ -1,8 +1,5 @@
 <?php
-// todo: reviews можно вынести в константу
-// todo: rename toHash in arrayReviewsToMd5Hash
-// todo: свести к одному return'y
-// todo: first iterate -> set something
+
 
 namespace parsing\platforms\google;
 
@@ -89,10 +86,6 @@ class GoogleGetter  implements GetterInterface
             // todo: Определиться с форматом хранения handled
 
                 $this->setLastReviewConfig();
-
-                $this->mainData['config']['last_review_date'] = $this->last_review_date;
-                $this->mainData['config']['last_review_hash'] = $this->last_review_hash;
-
                 $this->cutToTime($this->halfYearAgo);
 
                 $cuttedData = $this->mainData['platform_info']['reviews'];
@@ -111,14 +104,11 @@ class GoogleGetter  implements GetterInterface
                 }else{
                     $this->setLastReviewConfig();
                     $this->cutToTime($this->last_review_db);
-
-                    $this->mainData['config']['last_review_date'] = $this->last_review_date;
-                    $this->mainData['config']['last_review_hash'] = $this->last_review_hash;
                 }
 
         }
-        return $this->mainData;
 
+        return $this->mainData;
     }
 
     /**
@@ -151,9 +141,11 @@ class GoogleGetter  implements GetterInterface
         $this->source = $config['source'];
         $this->handle = $config['handle'];
         $this->mainData['config'] = $config['config'];
+
         if(isset($config['config']['last_review_date'])){
             $this->last_review_db = $config['config']['last_review_date'];
         }
+
     }
 
 
@@ -163,7 +155,6 @@ class GoogleGetter  implements GetterInterface
     }
 
     /**
-     * @param array $lastReview
      * Если происходит первая итерация цикла,то метод превращает массив в хэш-строку
      * для записи в специальную переменную
      * и записывает дату самого последнего по времени отзыва.
@@ -174,6 +165,9 @@ class GoogleGetter  implements GetterInterface
             $lastReview = $this->mainData['platform_info']['reviews'][0];
             $this->last_review_hash = $this->arrayReviewsToMd5Hash();
             $this->last_review_date = strtotime($lastReview['updateTime']);
+
+            $this->mainData['config']['last_review_date'] = $this->last_review_date;
+            $this->mainData['config']['last_review_hash'] = $this->last_review_hash;
         }
     }
 
@@ -196,7 +190,6 @@ class GoogleGetter  implements GetterInterface
 
     /**
      * @param int $timeBreak-дата,которая  используется при проверке.
-     * @return array
      * Функция обрезает данные до установленной даты.
      * В случае достижения заданной даны,меняет триггер на last_iteration
      */
@@ -220,7 +213,7 @@ class GoogleGetter  implements GetterInterface
     }
 
     /**
-     * @return array|null
+     *
      * Метод подключается к сервисам гугл по данному $source.
      * Если имеется nextPageToken,то он используется,также формируется заголовок запроса с нужным токеном
      * Возвращает декодированный ответ от GMB_API
@@ -255,8 +248,8 @@ class GoogleGetter  implements GetterInterface
     private function arrayReviewsToMd5Hash():?string
     {
         if($this->mainData !== self::END_CODE){
-            $lastUpdateReview = $this->mainData['platform_info']['reviews'][0];
 
+            $lastUpdateReview = $this->mainData['platform_info']['reviews'][0];
             $implode_array = implode($lastUpdateReview,'');
 
             return md5($implode_array);

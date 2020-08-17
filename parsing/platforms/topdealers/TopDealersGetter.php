@@ -32,6 +32,7 @@ class TopDealersGetter implements GetterInterface
     private $last_date_review_db;
     private $mainData;
 
+
     public function __construct()
     {
         $this->half_Year_Ago = time() - self::HALF_YEAR;
