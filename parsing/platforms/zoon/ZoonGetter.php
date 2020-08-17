@@ -3,7 +3,8 @@
 // todo: Изучить тему, связанную с использованием прокси, и избеганием бана от площадок.
 
 // todo: Проверка на правильный ответ от сервера
-
+// todo: Сделать проверку сохранненого хэша с полученным. Если совпадают, то отправлять meta-info
+//          (т.к. meta info может измениться)
 
 namespace parsing\platforms\zoon;
 
@@ -12,7 +13,7 @@ use phpQuery;
 
 class ZoonGetter implements GetterInterface
 {
-    const REVIEWS_LIMIT     =  5;
+    const REVIEWS_LIMIT     =  100;
 
     const STATUS_REVIEWS         = 0;
     const STATUS_SOURCE_REVIEW  = 1;
@@ -35,7 +36,6 @@ class ZoonGetter implements GetterInterface
     ];
 
     private $status;                // Статус работы Getter'a
-    private $records;               // Записи, которые передаются дольше по стеку
 
     protected $source;              // Информация, поступающая в Getter из Controller'a
     protected $handled;             // Флаг, который обозначает, обрабатывалась ли ссылка ранее
@@ -66,6 +66,9 @@ class ZoonGetter implements GetterInterface
         switch ($this->status) {
             case self::STATUS_REVIEWS:
                 $records = $this->getReviews();
+                if ($records->list === "") {
+                    $records = $this->getMetaInfo();
+                }
                 break;
 
             case self::STATUS_SOURCE_REVIEW:
@@ -100,7 +103,8 @@ class ZoonGetter implements GetterInterface
         $file = file_get_contents($this->source);
         $document = phpQuery::newDocument($file);
 
-        $records['count_reviews'] = $document->find('.fs-large.gray.js-toggle-content')->text();
+        $countReviews = $document->find('.fs-large.gray.js-toggle-content')->text();
+        $records['count_reviews'] = explode(' ', trim($countReviews))[0];
         $records['average_mark']  = $document->find('span.rating-value')->text();
 
         phpQuery::unloadDocuments();

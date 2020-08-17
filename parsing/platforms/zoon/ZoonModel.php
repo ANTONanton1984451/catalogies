@@ -27,18 +27,15 @@ class ZoonModel implements ModelInterface
     }
 
     public function writeData($records) {
-        if (is_array($records)) {
-            $this->writeReviews($records);
-        }
-
-        if (is_object($records)) {
+        if (isset($records['count_reviews']) && isset($records['average_mark'])) {
             $this->updateSourceReviewConfig($records);
+        } else {
+            $this->writeReviews($records);
         }
     }
 
     private function updateSourceReviewConfig($records) {
         $database = new DatabaseShell();
-
         if ($this->sourceInfo['handled'] === self::HANDLED_FALSE) {
             $database->updateSourceReview($this->sourceInfo['source_hash'], [
                 'source_meta_info'  =>  json_encode($records),
@@ -64,11 +61,11 @@ class ZoonModel implements ModelInterface
         } elseif ($this->sourceInfo['handled'] === self::HANDLED_TRUE) {
 
             foreach ($records as $record) {
-                if ($record['date'] > $this->sourceInfo['source_config']['date']) {
+                if ($record['date'] > $this->sourceInfo['source_config']) {
                     $result[] = $record;
 
-                    if ($record['date'] > $max_date) {
-                        $max_date = $record['date'];
+                    if ($record['date'] > $this->maxDate) {
+                        $this->maxDate = $record['date'];
                     }
                 }
             }

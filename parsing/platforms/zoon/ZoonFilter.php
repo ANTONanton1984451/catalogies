@@ -1,19 +1,4 @@
 <?php
-// todo: Изучить тему, связанную с использованием прокси, и избеганием бана от площадок.
-// todo: Проверка на официальный ответ
-
-// todo: Проверить, нужен ли массив readyRecords, и tempRecords
-// todo: Проверить, необходимо ли делать приведение типов
-// todo: Подумать о необходимости этого формата FORMAT_META
-// todo: Сделать нормальный механизм запуска clearHardData
-// todo: По возможности избавиться от регулярых выражений
-// todo: Проверить, можно ли избавиться от cutData
-// todo: В случае, если отзыв был отредактирован, забирать эту дату
-// todo: Сделать нормальный перебор, для clearHardData
-// todo: Разбить на функции clearSimpleData
-// todo: Подумать над тем, что clearMixData может быть убрана за ненадобностью, либо отрефакторена
-// todo: Сделать checkFormat более явным
-// todo: Сделать явный вызов clear-функций друг у друга
 
 namespace parsing\platforms\zoon;
 
@@ -22,127 +7,137 @@ use phpQuery;
 
 class ZoonFilter implements FilterInterface
 {
-    const FORMAT_SIMPLE     = 0;
-    const FORMAT_HARD       = 1;
-    const FORMAT_MIX        = 2;
-    const FORMAT_META       = 3;
+    const FORMAT_HARD   = 1;
+    const FORMAT_MIX    = 2;
+    const FORMAT_SIMPLE = 3;
 
-    private $format_records;
+    private $format;
 
-    private $tempRecords = [];
-    private $readyRecords = [];
+    public function clearData($buffer) {
+        if (is_object($buffer)) {
+            $buffer = $this->handlingReviews($buffer);
+        }
 
-    private $document;
-
-    public function setConfig($config) : void {
+        return $buffer;
     }
 
-    public function clearData($raw_data) : array {
-        $this->readyRecords = [];       // После каждого прохода, необходимо очистить массив
+    private function handlingReviews($buffer) {
+        $document = phpQuery::newDocument($buffer->list);
+        $this->checkFormat($document);
 
-        if (is_object($raw_data)){
-            // todo: Инкапсулировать все это в одну функцию, обработки отзывов
-            $this->document = phpQuery::newDocument($raw_data->list);
-            $this->checkFormat();
-            $this->cutData();
-            phpQuery::unloadDocuments();
-        }
-
-        if (is_array($raw_data)) {
-            $raw_data = (object) $raw_data;
-            $this->format_records = self::FORMAT_META;
-        }
-
-        switch ($this->format_records) {
-            case self::FORMAT_HARD:
-                $this->clearHardData(count($this->tempRecords));
-                break;
-
+        switch ($this->format) {
             case self::FORMAT_MIX:
-                $this->clearMixData();
+                $buffer = $this->handleMixReview($document);
                 break;
 
-            case self::FORMAT_SIMPLE:
-                $this->clearSimpleData();
-                break;
-
-            case self::FORMAT_META:
-                $this->readyRecords = $raw_data;
+            case self::FORMAT_HARD:
+                $buffer = $this->handleHardReview($document);
                 break;
         }
 
-        return $this->readyRecords;
+        phpQuery::unloadDocuments();
+        $document = phpQuery::newDocument($buffer);
+
+        $buffer = $this->handleSimpleReview($document);
+
+        return $buffer;
     }
 
-    private function clearMixData() : void {
-        $quantity = 0;
+    private function handleHardReview($document) {
+        $result = '';
+        $reviews = $document->find('script');
 
-        for ($i = 0; $i < count($this->tempRecords); $i++) {
-            if (!preg_match('/PGxpIGRhd/', $this->tempRecords[$i])) {
-                $quantity = $i - 1;
-            }
+        foreach ($reviews as $review) {
+            $pq = pq($review);
+            $simpleReview = explode('"' ,$pq->text())[1];
+
+            $simpleReview = str_replace("A", "@", $simpleReview);
+            $simpleReview = str_replace("=", "A", $simpleReview);
+            $simpleReview = str_replace("@", "=", $simpleReview);
+
+            $result = $result . base64_decode($simpleReview);
         }
 
-        $this->clearHardData($quantity);
+        return $result;
     }
 
-    private function clearHardData($quantity) : void {
-        for ($i = 0; $i < $quantity; $i++) {
-            $temp = $this->tempRecords[$i];
-            $temp = str_replace("A", "@", $temp);
-            $temp = str_replace("=", "A", $temp);
-            $temp = str_replace("@", "=", $temp);
-            $temp = base64_decode($temp);
-            $this->tempRecords[$i] = $temp;
+    private function handleMixReview($document) {
+        $result = '';
+
+        $reviews = $document->find('li');
+        foreach ($reviews as $review) {
+            $result = $result . pq($review)->htmlOuter();
         }
 
-        $this->clearSimpleData();
+        $result = $result . $this->handleHardReview($document);
+
+        return $result;
     }
 
-    private function clearSimpleData() : void {
-        foreach ($this->tempRecords as $review) {
-            $doc = phpQuery::newDocument($review);
-            $doc->find('ul')->remove();
+    private function handleSimpleReview($document) {
+        $document->find('ul')->remove();
+        $reviews = $document->find('li');
 
-            $date = $doc->find('.iblock.gray')->text();
+        foreach ($reviews as $review) {
+            $pq = pq($review);
+
+            $date = $pq->find('.iblock.gray')->text();
             $date = $this->formatDate($date);
 
-            $doc->find('.js-comment-short-text.comment-text span.js-comment-splitmarker')->remove();
-            $text_review_short = $doc->find('.js-comment-short-text.comment-text span')->text();
-            $text_review_long = $doc->find('.js-comment-additional-text.hidden')->text();
+            $pq->find('.js-comment-short-text.comment-text span.js-comment-splitmarker')->remove();
+            $short_text = $pq->find('.js-comment-short-text.comment-text span')->text();
+            $long_text = $pq->find('.js-comment-additional-text.hidden')->text();
 
-            $identifier = $doc->find('span.name')->text();
-
-            if ($text_review_long != '') {
-                $text_review = $text_review_short . $text_review_long;
+            if ($long_text != '') {
+                $text = $short_text . $long_text;
             } else {
-                $text_review = $text_review_short;
+                $text = $short_text;
             }
 
-            $this->readyRecords[] = [
-                'text'          =>  $text_review,
-                'date'          =>  $date,
-                'identifier'    =>  $identifier,
-            ];
+            $identifier = $pq->find('span.name')->text();
 
-            phpQuery::unloadDocuments();
+            $result[] = [
+                'text'          => $text,
+                'date'          => $date,
+                'identifier'    => $identifier
+            ];
         }
 
-        $this->tempRecords = [];
+        return $result;
     }
 
-    private function formatDate($date) : string {
-        $split_date = preg_split("/\s+/", $date);
-        $split_date[2] = $this->swapMonthFormat($split_date[2]);    // Замена строковой записи месяца, на числовое
+    public function setConfig($config) {
+        $config1 = $config;
+    }
 
-        $result = array_slice($split_date, 1, 3);
-        $result[] = $split_date[5];
+    private function checkFormat($document) {
+        if ($document->find('.comment-container.js-comment-container')->text() === '') {
+            $this->format = self::FORMAT_HARD;
+        } elseif ($document->find('script')->text() === '') {
+            $this->format = self::FORMAT_SIMPLE;
+        } else {
+            $this->format = self::FORMAT_MIX;
+        }
+    }
+
+    private function formatDate($date) {
+        $split_date = preg_split("/\s+/", $date);
+
+        if (isset($split_date[9])){
+            $split_date[11] = $this->swapMonthFormat($split_date[11]);
+            $result = array_slice($split_date, 10, 3);
+            $result[] = $split_date[14];
+        } else {
+            $split_date[2] = $this->swapMonthFormat($split_date[2]);
+            $result = array_slice($split_date, 1, 3);
+            $result[] = $split_date[5];
+        }
 
         return strtotime(implode($result, '-'));
     }
 
-    private function swapMonthFormat($month) : string {
-        switch ($month)  {
+    private function swapMonthFormat(string $month) {
+        switch ($month) {
             case 'января':
                 $month = '01';
                 break;
@@ -180,37 +175,6 @@ class ZoonFilter implements FilterInterface
                 $month = '12';
                 break;
         }
-
         return $month;
-    }
-
-    private function cutData() : void {
-        if ($this->format_records !== self::FORMAT_SIMPLE) {
-            $cutter = $this->document->find('script')->text();
-            $cutter = explode('"', $cutter);
-
-            for ($i = 1; $i < count($cutter); $i += 2) {
-                $this->tempRecords[] = $cutter[$i];
-            }
-        }
-
-        if ($this->format_records !== self::FORMAT_HARD) {
-            $this->document->find('ul')->remove();
-            $cutter = $this->document->find('li');
-
-            foreach ($cutter as $item) {
-                $this->tempRecords[] = pq($item)->html();
-            }
-        }
-    }
-
-    private function checkFormat() : void {
-        if ($this->document->find('.comment-container.js-comment-container')->text() === '') {
-            $this->format_records = self::FORMAT_HARD;
-        } elseif ($this->document->find('script')->text() === '') {
-            $this->format_records = self::FORMAT_SIMPLE;
-        } else {
-            $this->format_records = self::FORMAT_MIX;
-        }
     }
 }
