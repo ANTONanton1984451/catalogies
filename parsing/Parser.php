@@ -21,6 +21,8 @@ class Parser
     private $getter;
     private $filter;
     private $model;
+    
+
 
     private $notifies = [];
 
@@ -29,6 +31,7 @@ class Parser
         $this->filter->setConfig($config);
         $this->model->setConfig($config);
 
+
         while ($this->status != self::MESSAGE_END) {
             $buffer = $this->getter->getNextReviews();
 
@@ -36,9 +39,10 @@ class Parser
                 $this->status = self::MESSAGE_END;
                 continue;
             }
-
             $buffer = $this->filter->clearData($buffer);
+
             $this->model->writeReviews($buffer);
+
         }
     }
 

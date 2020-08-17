@@ -1,8 +1,5 @@
 <?php
-// todo: reviews можно вынести в константу
-// todo: rename toHash in arrayReviewsToMd5Hash
-// todo: свести к одному return'y
-// todo: first iterate -> set something
+
 
 namespace parsing\platforms\google;
 
@@ -14,12 +11,17 @@ use Google_Client;
  * Class GoogleGetter
  * @package parsing\platforms\google
  */
-class GoogleGetter extends Getter implements GetterInterface
+class GoogleGetter  implements GetterInterface
 {
     const URL = 'https://mybusiness.googleapis.com/v4/';
     const PAGE_SIZE = '50';
     const HALF_YEAR = 15552000;
-    
+    const LAST_ITERATION = 'last_iteration';
+    const END_CODE = 42;
+
+    protected $source;
+    protected $track;
+    protected $handle;
 
     private $client;
     private $curl;
@@ -31,6 +33,7 @@ class GoogleGetter extends Getter implements GetterInterface
     private $last_review_hash;
 
     private $config;
+    private $mainData;
 
     /**
      * @var int
@@ -57,7 +60,6 @@ class GoogleGetter extends Getter implements GetterInterface
 
     /**
      *
-     *
      * Функция,которая вызывает все остальные методы,получает массив данных с GMB_API в необработанном виде
      * При обнаружении отсутсвия отзывов или того,что уже совершилась последняя итерация,сразу же возвращает массив
      * с триггером,сообщающем о конце работы цикла.
@@ -67,77 +69,67 @@ class GoogleGetter extends Getter implements GetterInterface
      * Сначала метод выполняет общие действия для обоих видов обработки,затем происходит разделение методов в зависимости
      * от флага $handled.
      *
-     *
      */
     public function getNextRecords()
     {
         $this->iterator++;
 
-        if ($this->trigger == 'last_iteration') {
-            return self::END_CODE;
-        }
-
-        $this->refreshToken();
-
-        $google_request = $this->connectToPlatform();
-
-
-        if(empty($google_request['reviews'])){
-
-            return self::END_CODE;
-
-        }elseif (!empty($google_request['nextPageToken'])){
-
-            $this->nextPageToken = $google_request['nextPageToken'];
-
+        if ($this->trigger == self::LAST_ITERATION) {
+                $this->mainData = self::END_CODE;
         }else{
-
-            $this->trigger = 'last_iteration';
-            // todo: Можно запихнуть в константу
+                $this->refreshToken();
+                $this->connectToPlatform();
+                $this->checkResponse();
         }
 
-
-        if($this->handle == 'NEW'){
+        if($this->handle == 'NEW' && $this->mainData !== self::END_CODE){
             // todo: Определиться с форматом хранения handled
 
-                $this->firstIterate($google_request['reviews'][0]);
+                $this->setLastReviewConfig();
+                $this->cutToTime($this->halfYearAgo);
 
-                $this->config['last_review_date'] = $this->last_review_date;
-                $this->config['last_review_hash'] = $this->last_review_hash;
+                $cuttedData = $this->mainData['platform_info']['reviews'];
 
-               $google_request['reviews'] = $this->cutToTime($google_request['reviews'],$this->halfYearAgo);
-
-               if(!$google_request['reviews']){
-                    return self::END_CODE;
+               if(empty($cuttedData)){
+                    $this->mainData = self::END_CODE;
                }
 
 
-        }elseif($this->handle == 'HANDLED'){
+        }elseif($this->handle == 'HANDLED' && $this->mainData != self::END_CODE){
 
-                $lastReviewFromGMB = $this->toHash($google_request['reviews'][0]);
+                $lastReviewFromGMB = $this->arrayReviewsToMd5Hash();
 
                 if($lastReviewFromGMB === $this->config['last_review_hash']){
-
-                    return self::END_CODE;
-                }
-                $this->firstIterate($google_request['reviews'][0]);
-
-                $google_request['reviews'] = $this->cutToTime($google_request['reviews'],$this->last_review_db);
-
-                if(!$google_request['reviews']){
-                    return self::END_CODE;
+                    $this->mainData = self::END_CODE;
+                }else{
+                    $this->setLastReviewConfig();
+                    $this->cutToTime($this->last_review_db);
                 }
 
-                $this->config['last_review_date'] = $this->last_review_date;
-                $this->config['last_review_hash'] = $this->last_review_hash;
         }
 
-        return [
-            'platform_info'=>$google_request,
-            'config'=>$this->config,
-            'trigger'=>$this->trigger
-        ];
+        return $this->mainData;
+    }
 
+    /**
+     * Метод проверяет ответ от GMB_API.
+     * В случае,если нет отзывов,то мы оставляем сообщение о конце работы
+     */
+    private function checkResponse():void
+    {
+        if(empty($this->mainData['platform_info']['reviews'])){
+
+            $this->mainData = self::END_CODE;
+
+        }elseif (!empty($this->mainData['platform_info']['nextPageToken'])){
+
+            $this->nextPageToken = $this->mainData['platform_info']['nextPageToken'];
+
+        }else{
+
+            $this->trigger = self::LAST_ITERATION;
+
+        }
     }
 
     /**
@@ -148,10 +140,12 @@ class GoogleGetter extends Getter implements GetterInterface
     {
         $this->source = $config['source'];
         $this->handle = $config['handle'];
-        $this->config = $config['config'];
+        $this->mainData['config'] = $config['config'];
+
         if(isset($config['config']['last_review_date'])){
             $this->last_review_db = $config['config']['last_review_date'];
         }
+
     }
 
 
@@ -161,16 +155,19 @@ class GoogleGetter extends Getter implements GetterInterface
     }
 
     /**
-     * @param array $lastReview
      * Если происходит первая итерация цикла,то метод превращает массив в хэш-строку
      * для записи в специальную переменную
      * и записывает дату самого последнего по времени отзыва.
      */
-    private function firstIterate(array $lastReview):void
+    private function setLastReviewConfig():void
     {
         if($this->iterator === 1){
-            $this->last_review_hash = $this->toHash($lastReview);
+            $lastReview = $this->mainData['platform_info']['reviews'][0];
+            $this->last_review_hash = $this->arrayReviewsToMd5Hash();
             $this->last_review_date = strtotime($lastReview['updateTime']);
+
+            $this->mainData['config']['last_review_date'] = $this->last_review_date;
+            $this->mainData['config']['last_review_hash'] = $this->last_review_hash;
         }
     }
 
@@ -181,49 +178,47 @@ class GoogleGetter extends Getter implements GetterInterface
     private function refreshToken():void
     {
 
-        $this->client->setAccessToken($this->config['token_info']);
+        $this->client->setAccessToken($this->mainData['config']['token_info']);
 
         if($this->client->isAccessTokenExpired()){
 
             $refreshToken = $this->client->getRefreshToken();
-            $this->config['token_info'] = $this->client->fetchAccessTokenWithRefreshToken($refreshToken);
+            $this->mainData['config']['token_info'] = $this->client->fetchAccessTokenWithRefreshToken($refreshToken);
 
         }
     }
 
     /**
-     * @param array|null $data-ссылка на массив данных,которые нужно проверить на актуальность по дате
      * @param int $timeBreak-дата,которая  используется при проверке.
-     * @return array
      * Функция обрезает данные до установленной даты.
      * В случае достижения заданной даны,меняет триггер на last_iteration
      */
-    private function cutToTime(?array $data, int $timeBreak):array
+    private function cutToTime(int $timeBreak):void
     {
+        $data = $this->mainData['platform_info']['reviews'];
 
-        for($i=0;$i<count($data);$i++){
+            for($i=0;$i<count($data);$i++){
 
-            $timeStamp=strtotime($data[$i]['updateTime']);
+                $timeStamp=strtotime($data[$i]['updateTime']);
 
-            if($timeStamp > $timeBreak ){
-                continue;
-            }else{
-                $data=array_slice($data,0,$i);
-                $this->trigger = 'last_iteration';
-                return $data;
+                if($timeStamp > $timeBreak ){
+                    continue;
+                }else{
+                    $data=array_slice($data,0,$i);
+                    $this->trigger = self::LAST_ITERATION;
+                    $this->mainData['platform_info']['reviews'] = $data;
+                    return;
+                }
             }
-        }
-        return $data;
-
     }
 
     /**
-     * @return array|null
+     *
      * Метод подключается к сервисам гугл по данному $source.
      * Если имеется nextPageToken,то он используется,также формируется заголовок запроса с нужным токеном
      * Возвращает декодированный ответ от GMB_API
      */
-    private function connectToPlatform():?array
+    private function connectToPlatform():void
     {
         if(!$this->nextPageToken){
             $request_url = self::URL.$this->source.'/reviews?pageSize='.self::PAGE_SIZE;
@@ -233,24 +228,31 @@ class GoogleGetter extends Getter implements GetterInterface
 
         $this->curl = curl_init($request_url);
 
-        $header_str = 'Authorization: '.$this->config['token_info']['token_type'].' '.$this->config['token_info']['access_token'];
+        $token_type = $this->mainData['config']['token_info']['token_type'];
+        $access_token = $this->mainData['config']['token_info']['access_token'];
+
+        $header_str = 'Authorization: '.$token_type.' '.$access_token;
 
         curl_setopt($this->curl,CURLOPT_HTTPHEADER,[$header_str]);
         curl_setopt($this->curl,CURLOPT_RETURNTRANSFER,true);
 
         $response = curl_exec($this->curl);
 
-        return json_decode($response,true);
+        $this->mainData['platform_info'] = json_decode($response,true);
     }
 
     /**
-     * @param array $review_array_row
      * @return string
      * Переводит массив в хэш строку
      */
-    private function toHash(array $review_array_row):string
+    private function arrayReviewsToMd5Hash():?string
     {
-        $implode_array = implode($review_array_row,'');
-        return md5($implode_array);
+        if($this->mainData !== self::END_CODE){
+
+            $lastUpdateReview = $this->mainData['platform_info']['reviews'][0];
+            $implode_array = implode($lastUpdateReview,'');
+
+            return md5($implode_array);
+        }
     }
 }
