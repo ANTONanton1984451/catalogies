@@ -24,13 +24,11 @@ class Parser
 
     private $notifies = [];
 
-    public function __construct($config) {
-        $this->getter   ->setConfig($config);
-        $this->filter   ->setConfig($config);
-        $this->model    ->setConfig($config);
-    }
-
     public function parseSource() {
+        $this->getter->setConfig($config);
+        $this->filter->setConfig($config);
+        $this->model->setConfig($config);
+
         while ($this->status != self::MESSAGE_END) {
             $buffer = $this->getter->getNextReviews();
 

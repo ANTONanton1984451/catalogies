@@ -32,11 +32,9 @@ class ZoonFilter implements FilterInterface
     private $tempRecords = [];
     private $readyRecords = [];
 
-    private $config;
     private $document;
 
     public function setConfig($config) : void {
-        $this->config = $config;
     }
 
     public function clearData($raw_data) : array {
@@ -102,8 +100,7 @@ class ZoonFilter implements FilterInterface
     }
 
     private function clearSimpleData() : void {
-        foreach ($this->tempRecords as $review)
-        {
+        foreach ($this->tempRecords as $review) {
             $doc = phpQuery::newDocument($review);
             $doc->find('ul')->remove();
 

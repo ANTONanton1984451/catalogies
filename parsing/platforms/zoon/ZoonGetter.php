@@ -12,7 +12,7 @@ use phpQuery;
 
 class ZoonGetter implements GetterInterface
 {
-    const REVIEWS_LIMIT     =  50;
+    const REVIEWS_LIMIT     =  5;
 
     const STATUS_REVIEWS         = 0;
     const STATUS_SOURCE_REVIEW  = 1;
@@ -65,19 +65,19 @@ class ZoonGetter implements GetterInterface
     public function getNextRecords() {
         switch ($this->status) {
             case self::STATUS_REVIEWS:
-                $this->getReviews();
+                $records = $this->getReviews();
                 break;
 
             case self::STATUS_SOURCE_REVIEW:
-                $this->getMetaInfo();
+                $records = $this->getMetaInfo();
                 break;
 
             case self::STATUS_END;
-                $this->getEndCode();
+                $records = $this->getEndCode();
                 break;
         }
 
-        return $this->records;
+        return $records;
     }
 
     private function getReviews(){
@@ -87,26 +87,30 @@ class ZoonGetter implements GetterInterface
             . http_build_query(self::QUERY_CONST_DATA)
             . '&' . http_build_query($this->add_query_info)
         );
-        $this->records = json_decode($data);
+        $records = json_decode($data);
 
-        if ($this->records->remain == 0 || $this->handled === self::HANDLED_TRUE) {
+        if ($records->remain == 0 || $this->handled === self::HANDLED_TRUE) {
             $this->status = self::STATUS_SOURCE_REVIEW;
         }
+
+        return $records;
     }
 
     private function getMetaInfo() {
         $file = file_get_contents($this->source);
         $document = phpQuery::newDocument($file);
 
-        $this->records['count_reviews'] = $document->find('.fs-large.gray.js-toggle-content')->text();
-        $this->records['average_mark']  = $document->find('span.rating-value')->text();
+        $records['count_reviews'] = $document->find('.fs-large.gray.js-toggle-content')->text();
+        $records['average_mark']  = $document->find('span.rating-value')->text();
 
         phpQuery::unloadDocuments();
 
         $this->status = self::STATUS_END;
+
+        return $records;
     }
 
     private function getEndCode() {
-        $this->records = self::END_CODE;
+        return self::END_CODE;
     }
 }
