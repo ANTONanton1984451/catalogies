@@ -43,24 +43,26 @@ class ZoonGetter implements GetterInterface
     private $add_query_info = [];   // Дополнительная информация для url запроса
     private $active_list_reviews;   // Номер последнего обработанного листа с отзывами
 
+
+
     public function __construct() {
         $this->add_query_info['owner[]']    = 'prof';      // Строка нужна для корректного формирования url запроса
         $this->active_list_reviews          = 0;
         $this->status                       = self::STATUS_REVIEWS;
     }
-
     public function setConfig($config) : void {
         $this->handled  = $config['handled'];
         $this->source   = $config['source'];
         $this->getOrganizationId();
     }
-
     private function getOrganizationId() : void {
         $file = file_get_contents($this->source);
         $document = phpQuery::newDocument($file);
         $this->add_query_info['organization'] = $document->find('.comments-section')->attr('data-owner-id');
         phpQuery::unloadDocuments();
     }
+
+
 
     public function getNextRecords() {
         switch ($this->status) {
@@ -82,7 +84,6 @@ class ZoonGetter implements GetterInterface
 
         return $records;
     }
-
     private function getReviews(){
         $this->add_query_info[self::PREFIX_SKIP] = $this->active_list_reviews++ * self::REVIEWS_LIMIT;
         $data = file_get_contents
@@ -98,7 +99,6 @@ class ZoonGetter implements GetterInterface
 
         return $records;
     }
-
     private function getMetaInfo() {
         $file = file_get_contents($this->source);
         $document = phpQuery::newDocument($file);
@@ -113,7 +113,6 @@ class ZoonGetter implements GetterInterface
 
         return $records;
     }
-
     private function getEndCode() {
         return self::END_CODE;
     }

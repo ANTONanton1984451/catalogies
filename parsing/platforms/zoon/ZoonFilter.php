@@ -106,9 +106,7 @@ class ZoonFilter implements FilterInterface
         return $result;
     }
 
-    public function setConfig($config) {
-        $config1 = $config;
-    }
+    public function setConfig($config) {}
 
     private function checkFormat($document) {
         if ($document->find('.comment-container.js-comment-container')->text() === '') {

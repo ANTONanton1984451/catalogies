@@ -1,4 +1,5 @@
 <?php
+// todo: Если это метаинформация, ее нужно пропускать
 
 namespace parsing\platforms\yell;
 
@@ -7,29 +8,45 @@ use phpQuery;
 
 class YellFilter implements FilterInterface
 {
-    private $temp_reviews = [];
-
     public function clearData($raw_data) {
         $doc = phpQuery::newDocument($raw_data);
-        $cutter = $doc->find('div.reviews__item');
+        $reviews = $doc->find('div.reviews__item');
 
-        foreach ($cutter as $item) {
-            $pq = pq($item);
+        foreach ($reviews as $review) {
+            $pq = pq($review);
 
-            $author = $pq->find('div.reviews__item-user-name')->text();
+            $identifier = $pq->find('div.reviews__item-user-name')->text();
             $text = $pq->find('div.reviews__item-text')->text();
 
             $date = $pq->find('span.reviews__item-added')->attr('content');
             $date = strtotime($date);
 
-            $this->temp_reviews[] = [$author, $text, $date];
+            $rating = $pq->find('span.rating__value')->text();
+
+            $records[] = [
+                'identifier'    => $identifier,
+                'text'          => $text,
+                'date'          => $date,
+                'rating'        => (int) $rating * 2,
+                'tonal'         => $this->setTonal($rating)
+            ];
         }
 
-        return $this->temp_reviews;
+        return $records;
     }
 
-    public function setConfig($config)
-    {
-        $config1 = $config;
+    private function setTonal(String $rating) {
+        if ($rating == 5) {
+            $result = 'POSITIVE';
+        } elseif ($rating == 4) {
+            $result = 'NEUTRAL';
+        } else {
+            $result = 'NEGATIVE';
+        }
+
+        return $result;
+
     }
+
+    public function setConfig($config) {}
 }
