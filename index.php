@@ -1,10 +1,6 @@
 <?php
 
 use parsing\ParserManager;
-use parsing\platforms\zoon\ZoonGetter;
-use parsing\platforms\zoon\ZoonFilter;
-use parsing\platforms\zoon\ZoonModel;
-use parsing\DB\DatabaseShell;
 
 require_once "autoloader.php";
 require_once "vendor/autoload.php";
@@ -19,11 +15,11 @@ $manager->parseSources();
 //setSource();
 
 function setSource() {
-    $source = 'https://www.yell.ru/spb/com/restoran-stroganoff-steak-house-na-admiraltejskoj_11890813/';
+    $source = 'https://volgograd.zoon.ru/restaurants/kafe_nosorog/';
     $db = new \parsing\DB\DatabaseShell();
     $db->insertSourceReview([
         'source_hash'   =>  md5($source),
-        'platform'      =>  'yell',
+        'platform'      =>  'zoon',
         'source'        =>  $source,
         'actual'        =>  'ACTIVE',
         'track'         =>  'ALL',

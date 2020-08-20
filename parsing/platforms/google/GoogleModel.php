@@ -8,8 +8,8 @@ use parsing\factories\factory_interfaces\ModelInterface;
 
 class GoogleModel implements ModelInterface
 {
-    public function writeData($reviews)
+    public function writeData($records)
     {
-        var_dump($reviews);
+        var_dump($records);
     }
 }

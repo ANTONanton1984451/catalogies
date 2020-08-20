@@ -148,7 +148,8 @@ class MigrationsManager {
                         ALTER TABLE review 
                         ADD FOREIGN KEY (source_hash_key) 
                         REFERENCES source_review(source_hash)
-                        ON DELETE SET NULL 
+                        ON DELETE SET NULL
+                        ON UPDATE CASCADE 
         ");
 
         $this->database->query("

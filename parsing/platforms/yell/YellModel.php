@@ -8,7 +8,7 @@ use parsing\factories\factory_interfaces\ModelInterface;
 
 class YellModel implements ModelInterface
 {
-    const HANDLED_TRUE  = 'HANDLED';
+    const HANDLED_TRUE = 'HANDLED';
     const HANDLED_FALSE = 'NEW';
 
     private $sourceInfo;
@@ -16,11 +16,12 @@ class YellModel implements ModelInterface
 
     private $maxDate;
 
-    public function setConfig($config) {
+    public function setConfig($config) : void
+    {
         $this->sourceInfo = $config;
         $this->constInfo = [
-            'platform'        =>  'yell',
-            'source_hash_key' =>  $this->sourceInfo['source_hash'],
+            'platform' => 'yell',
+            'source_hash_key' => $this->sourceInfo['source_hash'],
         ];
 
         if (isset($config['source_config']['maxDate'])) {
@@ -28,15 +29,23 @@ class YellModel implements ModelInterface
         }
     }
 
-    public function writeData($reviews) {
-        $database = new DatabaseShell();
+    public function writeData($records) : void
+    {
+        if (isset($records['average_mark'])) {
+            $this->updateSourceReview($records);
+        } else {
+            $this->writeReviews($records);
+        }
+    }
 
+    private function writeReviews($records) : void
+    {
         if ($this->sourceInfo['handled'] === self::HANDLED_FALSE) {
-            $database->insertReviews($reviews, $this->constInfo);
+            $database->insertReviews($records, $this->constInfo);
         }
 
         if ($this->sourceInfo['handled'] === self::HANDLED_TRUE) {
-            foreach ($reviews as $review) {
+            foreach ($records as $review) {
                 if ($review['date'] > $this->maxDate) {
                     $result[] = $review;
                 }
@@ -45,4 +54,6 @@ class YellModel implements ModelInterface
             $database->insertReviews($result, $this->constInfo);
         }
     }
+
+    private function updateSourceReview($records){}
 }

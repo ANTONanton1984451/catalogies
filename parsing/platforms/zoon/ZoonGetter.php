@@ -3,8 +3,6 @@
 // todo: Изучить тему, связанную с использованием прокси, и избеганием бана от площадок.
 
 // todo: Проверка на правильный ответ от сервера
-// todo: Сделать проверку сохранненого хэша с полученным. Если совпадают, то отправлять meta-info
-//          (т.к. meta info может измениться)
 
 namespace parsing\platforms\zoon;
 
@@ -13,64 +11,76 @@ use phpQuery;
 
 class ZoonGetter implements GetterInterface
 {
-    const REVIEWS_LIMIT     =  100;
+    const REVIEWS_LIMIT = 100;
 
-    const STATUS_REVIEWS        = 0;
-    const STATUS_SOURCE_REVIEW  = 1;
-    const STATUS_END            = 2;
+    const STATUS_REVIEWS = 0;
+    const STATUS_SOURCE_REVIEW = 1;
+    const STATUS_END = 2;
 
-    const HANDLED_TRUE      = 'HANDLED';
+    const EMPTY_RECORD = '';
 
-    const HOST              = 'https://zoon.ru/js.php?';
-    const PREFIX_SKIP       = 'skip';
+    const HANDLED_TRUE = 'HANDLED';
 
-    const QUERY_CONST_DATA  = [
-            'area'                                  => 'service',
-            'action'                                => 'CommentList',
-            'owner[]'                               => 'organization',
-            'is_widget'                             => 1,
-            'strategy_options[with_photo]'          => 0,
-            'allow_comment'                         => 0,
-            'allow_share'                           => 0,
-            'limit'                                 => self::REVIEWS_LIMIT,
+    const HOST = 'https://zoon.ru/js.php?';
+    const PREFIX_SKIP = 'skip';
+
+    const QUERY_CONST_PARAMS = [
+        'area' => 'service',
+        'action' => 'CommentList',
+        'owner[]' => 'organization',
+        'is_widget' => 1,
+        'strategy_options[with_photo]' => 0,
+        'allow_comment' => 0,
+        'allow_share' => 0,
+        'limit' => self::REVIEWS_LIMIT,
     ];
 
-    private $status;                // Статус работы Getter'a
+    private $status;
 
-    protected $source;              // Информация, поступающая в Getter из Controller'a
-    protected $handled;             // Флаг, который обозначает, обрабатывалась ли ссылка ранее
+    private $source;
+    private $handled;               // Флаг, который обозначает, обрабатывалась ли ссылка ранее
+    private $oldHash;               // Хэш первой страницы отзывов, полученный в предыдущие итерации этой ссылки
 
-    private $add_query_info = [];   // Дополнительная информация для url запроса
-    private $active_list_reviews;   // Номер последнего обработанного листа с отзывами
+    private $addQueryParams = [];
+    private $activeListReviews;
 
 
 
-    public function __construct() {
-        $this->add_query_info['owner[]']    = 'prof';      // Строка нужна для корректного формирования url запроса
-        $this->active_list_reviews          = 0;
-        $this->status                       = self::STATUS_REVIEWS;
+    public function __construct()
+    {
+        $this->addQueryParams['owner[]'] = 'prof';      // Строка нужна для корректного формирования url запроса
+        $this->activeListReviews = 0;
+        $this->status = self::STATUS_REVIEWS;
     }
-    public function setConfig($config) : void {
-        $this->handled  = $config['handled'];
-        $this->source   = $config['source'];
+
+    public function setConfig($config): void
+    {
+        $this->handled = $config['handled'];
+        $this->source = $config['source'];
+
+        if ($this->handled === self::HANDLED_TRUE) {
+            $this->oldHash = json_decode($config['source_config'], true)['old_hash'];
+        }
+
         $this->getOrganizationId();
     }
-    private function getOrganizationId() : void {
+
+    private function getOrganizationId() : void
+    {
         $file = file_get_contents($this->source);
         $document = phpQuery::newDocument($file);
-        $this->add_query_info['organization'] = $document->find('.comments-section')->attr('data-owner-id');
+        $this->addQueryParams['organization'] = $document->find('.comments-section')->attr('data-owner-id');
         phpQuery::unloadDocuments();
     }
 
 
 
-    public function getNextRecords() {
+    public function getNextRecords()
+    {
         switch ($this->status) {
             case self::STATUS_REVIEWS:
                 $records = $this->getReviews();
-                if ($records->list === "") {
-                    $records = $this->getMetaInfo();
-                }
+                $records = $this->validateReviews($records);    // Здесь может генерироваться Meta информация
                 break;
 
             case self::STATUS_SOURCE_REVIEW:
@@ -81,31 +91,37 @@ class ZoonGetter implements GetterInterface
                 $records = $this->getEndCode();
                 break;
         }
-
         return $records;
     }
-    private function getReviews(){
-        $this->add_query_info[self::PREFIX_SKIP] = $this->active_list_reviews++ * self::REVIEWS_LIMIT;
-        $data = file_get_contents
-        (self::HOST
-            . http_build_query(self::QUERY_CONST_DATA)
-            . '&' . http_build_query($this->add_query_info)
+
+    private function getReviews() : string
+    {
+        $this->addQueryParams[self::PREFIX_SKIP] = $this->activeListReviews++ * self::REVIEWS_LIMIT;
+        return file_get_contents(
+            self::HOST .
+            http_build_query(self::QUERY_CONST_PARAMS) .
+            '&' .
+            http_build_query($this->addQueryParams)
         );
-        $records = json_decode($data);
-
-        if ($records->remain == 0 || $this->handled === self::HANDLED_TRUE) {
-            $this->status = self::STATUS_SOURCE_REVIEW;
-        }
-
-        return $records;
     }
-    private function getMetaInfo() {
+
+    private function getMetaInfo() : array
+    {
         $file = file_get_contents($this->source);
         $document = phpQuery::newDocument($file);
 
         $countReviews = $document->find('.fs-large.gray.js-toggle-content')->text();
         $records['count_reviews'] = explode(' ', trim($countReviews))[0];
-        $records['average_mark']  = $document->find('span.rating-value')->text();
+        $records['average_mark'] = $document->find('span.rating-value')->text();
+
+        $this->addQueryParams[self::PREFIX_SKIP] = 0;
+        $firstReviews = file_get_contents
+        (self::HOST
+            . http_build_query(self::QUERY_CONST_PARAMS)
+            . '&' . http_build_query($this->addQueryParams)
+        );
+
+        $records['old_hash'] = md5($firstReviews);
 
         phpQuery::unloadDocuments();
 
@@ -113,7 +129,28 @@ class ZoonGetter implements GetterInterface
 
         return $records;
     }
-    private function getEndCode() {
+
+    private function getEndCode() : int
+    {
         return self::END_CODE;
+    }
+
+    private function validateReviews($records)
+    {
+        if (md5($records) == $this->oldHash) {
+            $records = $this->getMetaInfo();
+            return $records;
+        }
+
+        $records = json_decode($records);
+        if ($records->remain == 0 || $this->handled === self::HANDLED_TRUE) {
+            $this->status = self::STATUS_SOURCE_REVIEW;
+        }
+
+        if ($records->list == self::EMPTY_RECORD) {
+            $records = $this->getMetaInfo();
+        }
+
+        return $records;
     }
 }

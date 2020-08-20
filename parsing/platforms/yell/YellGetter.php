@@ -8,10 +8,10 @@ use phpQuery;
 class YellGetter implements GetterInterface
 {
     const STATUS_ACTIVE = 0;
-    const STATUS_END    = 1;
+    const STATUS_END = 1;
 
-    const HOST          = 'https://www.yell.ru/company/reviews/?';
-    const EMPTY_RECORD  = 64;
+    const HOST = 'https://www.yell.ru/company/reviews/?';
+    const EMPTY_RECORD = 64;
 
     private $status;
     private $activePage;
@@ -23,21 +23,27 @@ class YellGetter implements GetterInterface
     private $queryInfo;
 
 
-    public function __construct() {
+
+    public function __construct()
+    {
         $this->status = self::STATUS_ACTIVE;
         $this->activePage = 1;
         $this->queryInfo = [
-            'sort'  =>  'recent',
-            'page'  =>  $this->activePage,
+            'sort' => 'recent',
+            'page' => $this->activePage,
         ];
     }
-    public function setConfig($config) {
-        $this->source   = $config['source'];
-        $this->handled  = $config['handled'];
-        $this->oldHash  = $config['source_config']['oldHash'];
+
+    public function setConfig($config) : void
+    {
+        $this->source = $config['source'];
+        $this->handled = $config['handled'];
+        $this->oldHash = $config['source_config']['oldHash'];
         $this->getOrganizationId();
     }
-    private function getOrganizationId() {
+
+    private function getOrganizationId() : void
+    {
         $sourcePage = file_get_contents($this->source);
         $document = phpQuery::newDocument($sourcePage);
         $id = $document->find('.company.company_default')->attr('data-id');
@@ -46,12 +52,14 @@ class YellGetter implements GetterInterface
     }
 
 
-    public function getNextRecords () {
+
+    public function getNextRecords()
+    {
         if ($this->status === self::STATUS_END) {
             $records = $this->getEndCode();
         }
 
-        if ($this->status === self::STATUS_ACTIVE){
+        if ($this->status === self::STATUS_ACTIVE) {
             $records = $this->getReviews();
 
             if (strlen($records) === self::EMPTY_RECORD) {
@@ -62,8 +70,10 @@ class YellGetter implements GetterInterface
 
         return $records;
     }
-    private function getReviews() {
-        if ($this->handled === 'NEW'){
+
+    private function getReviews()
+    {
+        if ($this->handled === 'NEW') {
             $records = file_get_contents(self::HOST . http_build_query($this->queryInfo));
             $this->queryInfo['page'] = ++$this->activePage;
         }
@@ -77,13 +87,26 @@ class YellGetter implements GetterInterface
 
         return $records;
     }
-    private function getMetaInfo() {
-        return 'meta';
+
+    private function getMetaInfo()
+    {
+        $sourcePage = file_get_contents($this->source);
+        $document = phpQuery::newDocument($sourcePage);
+
+        $records['average_mark'] = $document->find('div.company__rating span.rating__value')->text();
+        $records['count_reviews'] = $document->find('span.rating__reviews span')->text();
+
+        phpQuery::unloadDocuments();
+        return $records;
     }
-    private function getEndCode() {
+
+    private function getEndCode()
+    {
         return self::END_CODE;
     }
-    private function isEqualsHash(string $md5) : bool {
+
+    private function isEqualsHash(string $md5): bool
+    {
         return $this->oldHash === $md5;
     }
 }

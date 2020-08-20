@@ -7,13 +7,14 @@ use phpQuery;
 
 class ZoonFilter implements FilterInterface
 {
-    const FORMAT_HARD   = 1;
-    const FORMAT_MIX    = 2;
+    const FORMAT_HARD = 1;
+    const FORMAT_MIX = 2;
     const FORMAT_SIMPLE = 3;
 
     private $format;
 
-    public function clearData($buffer) {
+    public function clearData($buffer): array
+    {
         if (is_object($buffer)) {
             $buffer = $this->handlingReviews($buffer);
         }
@@ -21,35 +22,53 @@ class ZoonFilter implements FilterInterface
         return $buffer;
     }
 
-    private function handlingReviews($buffer) {
+    private function handlingReviews($buffer): array
+    {
         $document = phpQuery::newDocument($buffer->list);
         $this->checkFormat($document);
 
         switch ($this->format) {
             case self::FORMAT_MIX:
-                $buffer = $this->handleMixReview($document);
+                $simpleRecords = $this->handleMixReview($document);
+                $simpleDoc = phpQuery::newDocument($simpleRecords);
+                $buffer = $this->handleSimpleReview($simpleDoc);
                 break;
 
             case self::FORMAT_HARD:
-                $buffer = $this->handleHardReview($document);
+                $simpleRecords = $this->handleHardReview($document);
+                $simpleDoc = phpQuery::newDocument($simpleRecords);
+                $buffer = $this->handleSimpleReview($simpleDoc);
+                break;
+
+            case self::FORMAT_SIMPLE:
+                $buffer = $this->handleSimpleReview($document);
                 break;
         }
 
         phpQuery::unloadDocuments();
-        $document = phpQuery::newDocument($buffer);
-
-        $buffer = $this->handleSimpleReview($document);
 
         return $buffer;
     }
 
-    private function handleHardReview($document) {
+    private function checkFormat($document): void
+    {
+        if ($document->find('.comment-container.js-comment-container')->text() === '') {
+            $this->format = self::FORMAT_HARD;
+        } elseif ($document->find('script')->text() === '') {
+            $this->format = self::FORMAT_SIMPLE;
+        } else {
+            $this->format = self::FORMAT_MIX;
+        }
+    }
+
+    private function handleHardReview($document): string
+    {
         $result = '';
         $reviews = $document->find('script');
 
         foreach ($reviews as $review) {
             $pq = pq($review);
-            $simpleReview = explode('"' ,$pq->text())[1];
+            $simpleReview = explode('"', $pq->text())[1];
 
             $simpleReview = str_replace("A", "@", $simpleReview);
             $simpleReview = str_replace("=", "A", $simpleReview);
@@ -61,7 +80,8 @@ class ZoonFilter implements FilterInterface
         return $result;
     }
 
-    private function handleMixReview($document) {
+    private function handleMixReview($document): string
+    {
         $result = '';
 
         $reviews = $document->find('li');
@@ -74,7 +94,8 @@ class ZoonFilter implements FilterInterface
         return $result;
     }
 
-    private function handleSimpleReview($document) {
+    private function handleSimpleReview($document): array
+    {
         $document->find('ul')->remove();
         $reviews = $document->find('li');
 
@@ -97,31 +118,20 @@ class ZoonFilter implements FilterInterface
             $identifier = $pq->find('span.name')->text();
 
             $result[] = [
-                'text'          => $text,
-                'date'          => $date,
-                'identifier'    => $identifier
+                'text' => $text,
+                'date' => $date,
+                'identifier' => $identifier
             ];
         }
 
         return $result;
     }
 
-    public function setConfig($config) {}
-
-    private function checkFormat($document) {
-        if ($document->find('.comment-container.js-comment-container')->text() === '') {
-            $this->format = self::FORMAT_HARD;
-        } elseif ($document->find('script')->text() === '') {
-            $this->format = self::FORMAT_SIMPLE;
-        } else {
-            $this->format = self::FORMAT_MIX;
-        }
-    }
-
-    private function formatDate($date) {
+    private function formatDate($date): int
+    {
         $split_date = preg_split("/\s+/", $date);
 
-        if (isset($split_date[9])){
+        if (isset($split_date[9])) {
             $split_date[11] = $this->swapMonthFormat($split_date[11]);
             $result = array_slice($split_date, 10, 3);
             $result[] = $split_date[14];
@@ -134,7 +144,8 @@ class ZoonFilter implements FilterInterface
         return strtotime(implode($result, '-'));
     }
 
-    private function swapMonthFormat(string $month) {
+    private function swapMonthFormat(string $month): string
+    {
         switch ($month) {
             case 'января':
                 $month = '01';
@@ -175,4 +186,6 @@ class ZoonFilter implements FilterInterface
         }
         return $month;
     }
+
+    public function setConfig($config){}
 }

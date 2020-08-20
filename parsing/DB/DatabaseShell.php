@@ -1,5 +1,5 @@
 <?php
-// todo: singletone?
+// todo: singleton?
 // todo: Подумать над добавлением onUpdate реакций для внешних ключей
 // todo: Refactor getActualSourceReview
 // todo: Да и в целом, явно требуется рефакторинг и отладка данного класса
@@ -35,11 +35,11 @@ class DatabaseShell
     }
 
     public function updateSourceReview($source_hash, $updateData) {
-        $this->database->update("source_review", $updateData, ["source_hash"=>$source_hash]);
+        $this->database->update("source_review", $updateData, ["source_hash" => $source_hash] );
     }
 
     public function getSourceReview($source_hash) {
-        $this->database->select("source_review", "*", ["source_hash" => $source_hash]);
+        $this->database->select("source_review", "*", ["source_hash" => $source_hash] );
     }
 
     public function deleteSourceReview() {}
