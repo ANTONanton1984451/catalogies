@@ -127,24 +127,17 @@ class ZoonFilter implements FilterInterface
         return $result;
     }
 
-    private function formatDate($date): int
+    private function formatDate($date)
     {
         $split_date = preg_split("/\s+/", $date);
-
-        if (isset($split_date[9])) {
-            $split_date[11] = $this->swapMonthFormat($split_date[11]);
-            $result = array_slice($split_date, 10, 3);
-            $result[] = $split_date[14];
-        } else {
-            $split_date[2] = $this->swapMonthFormat($split_date[2]);
-            $result = array_slice($split_date, 1, 3);
-            $result[] = $split_date[5];
-        }
+        $split_date[2] = $this->swapMonthFormat($split_date[2]);
+        $result = array_slice($split_date, 1, 3);
+        $result[] = $split_date[5];
 
         return strtotime(implode($result, '-'));
     }
 
-    private function swapMonthFormat(string $month): string
+    private function swapMonthFormat($month)
     {
         switch ($month) {
             case 'января':

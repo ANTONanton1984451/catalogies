@@ -1,8 +1,4 @@
 <?php
-// todo: Сделать сравнение данных при обычном парсинге через повторение js скрипта, и при помощи браузера
-// todo: Изучить тему, связанную с использованием прокси, и избеганием бана от площадок.
-
-// todo: Проверка на правильный ответ от сервера
 
 namespace parsing\platforms\zoon;
 
@@ -11,20 +7,15 @@ use phpQuery;
 
 class ZoonGetter implements GetterInterface
 {
-    const REVIEWS_LIMIT = 100;
+    private $status;
+    private $addQueryParameters;
+    private $activeListReviews;
 
-    const STATUS_REVIEWS = 0;
-    const STATUS_SOURCE_REVIEW = 1;
-    const STATUS_END = 2;
-
-    const EMPTY_RECORD = '';
-
-    const HANDLED_TRUE = 'HANDLED';
+    private $metaRecord;
 
     const HOST = 'https://zoon.ru/js.php?';
-    const PREFIX_SKIP = 'skip';
 
-    const QUERY_CONST_PARAMS = [
+    const QUERY_CONSTANT_PARAMETERS = [
         'area' => 'service',
         'action' => 'CommentList',
         'owner[]' => 'organization',
@@ -35,122 +26,80 @@ class ZoonGetter implements GetterInterface
         'limit' => self::REVIEWS_LIMIT,
     ];
 
-    private $status;
+    const REVIEWS_LIMIT = 100;
 
-    private $source;
-    private $handled;               // Флаг, который обозначает, обрабатывалась ли ссылка ранее
-    private $oldHash;               // Хэш первой страницы отзывов, полученный в предыдущие итерации этой ссылки
+    const SKIP = 'skip';
 
-    private $addQueryParams = [];
-    private $activeListReviews;
-
+    const STATUS_REVIEWS = 0;
+    const STATUS_META_RECORD = 1;
+    const STATUS_END = 2;
 
 
-    public function __construct()
-    {
-        $this->addQueryParams['owner[]'] = 'prof';      // Строка нужна для корректного формирования url запроса
+    public function __construct(){
+        $this->addQueryParameters['owner[]'] = 'prof';
         $this->activeListReviews = 0;
         $this->status = self::STATUS_REVIEWS;
     }
 
-    public function setConfig($config): void
-    {
-        $this->handled = $config['handled'];
-        $this->source = $config['source'];
+    public function setConfig($config) {
+        $this->setMetaRecord($config['source']);
 
-        if ($this->handled === self::HANDLED_TRUE) {
-            $this->oldHash = json_decode($config['source_config'], true)['old_hash'];
-        }
-
-        $this->getOrganizationId();
+    //    if ($config['handled'] === self::HANDLED_TRUE) {
+    //        todo: Сделать считывание хэш суммы
+    //    }
     }
 
-    private function getOrganizationId() : void
-    {
-        $file = file_get_contents($this->source);
+    private function setMetaRecord($source) {
+        $file = file_get_contents($source);
         $document = phpQuery::newDocument($file);
-        $this->addQueryParams['organization'] = $document->find('.comments-section')->attr('data-owner-id');
-        phpQuery::unloadDocuments();
-    }
 
-
-
-    public function getNextRecords()
-    {
-        switch ($this->status) {
-            case self::STATUS_REVIEWS:
-                $records = $this->getReviews();
-                $records = $this->validateReviews($records);    // Здесь может генерироваться Meta информация
-                break;
-
-            case self::STATUS_SOURCE_REVIEW:
-                $records = $this->getMetaInfo();
-                break;
-
-            case self::STATUS_END;
-                $records = $this->getEndCode();
-                break;
-        }
-        return $records;
-    }
-
-    private function getReviews() : string
-    {
-        $this->addQueryParams[self::PREFIX_SKIP] = $this->activeListReviews++ * self::REVIEWS_LIMIT;
-        return file_get_contents(
-            self::HOST .
-            http_build_query(self::QUERY_CONST_PARAMS) .
-            '&' .
-            http_build_query($this->addQueryParams)
-        );
-    }
-
-    private function getMetaInfo() : array
-    {
-        $file = file_get_contents($this->source);
-        $document = phpQuery::newDocument($file);
+        $this->addQueryParameters['organization'] = $document
+            ->find('.comments-section')->attr('data-owner-id');
 
         $countReviews = $document->find('.fs-large.gray.js-toggle-content')->text();
-        $records['count_reviews'] = explode(' ', trim($countReviews))[0];
-        $records['average_mark'] = $document->find('span.rating-value')->text();
-
-        $this->addQueryParams[self::PREFIX_SKIP] = 0;
-        $firstReviews = file_get_contents
-        (self::HOST
-            . http_build_query(self::QUERY_CONST_PARAMS)
-            . '&' . http_build_query($this->addQueryParams)
-        );
-
-        $records['old_hash'] = md5($firstReviews);
+        $this->metaRecord['count_reviews'] = explode(' ', trim($countReviews))[0];
+        $this->metaRecord['average_mark'] = $document->find('span.rating-value')->text();
 
         phpQuery::unloadDocuments();
-
-        $this->status = self::STATUS_END;
-
-        return $records;
     }
 
-    private function getEndCode() : int
-    {
+
+
+    public function getNextRecords(){
+        switch ($status) {
+            case self::STATUS_REVIEWS:
+                $records = $this->getReviews();
+                break;
+
+            case self::STATUS_META_RECORD:
+                $records = $this->getMetaRecord();
+                break;
+
+            case self::STATUS_END:
+                $records = $this->getEndCode();
+                break;
+
+            default:
+                throw new Exception("Unknown Status");
+        }
+
+    return $records;
+}
+
+    private function getReviews(){
+        $this->addQueryParameters[self::SKIP] = $this->activeListReviews++ * self::REVIEWS_LIMIT;
+
+        $query = self::HOST . http_build_query(self::QUERY_CONSTANT_PARAMETERS) .
+            '&' . http_build_query($this->addQueryParameters);
+
+        return file_get_contents($query);
+    }
+
+    private function getMetaRecord(){
+        return $this->metaRecord;
+    }
+
+    private function getEndCode(){
         return self::END_CODE;
-    }
-
-    private function validateReviews($records)
-    {
-        if (md5($records) == $this->oldHash) {
-            $records = $this->getMetaInfo();
-            return $records;
-        }
-
-        $records = json_decode($records);
-        if ($records->remain == 0 || $this->handled === self::HANDLED_TRUE) {
-            $this->status = self::STATUS_SOURCE_REVIEW;
-        }
-
-        if ($records->list == self::EMPTY_RECORD) {
-            $records = $this->getMetaInfo();
-        }
-
-        return $records;
     }
 }

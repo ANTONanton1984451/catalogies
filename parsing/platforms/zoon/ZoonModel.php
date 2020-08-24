@@ -1,4 +1,9 @@
 <?php
+// todo: Разбить на более мелкие функции
+// todo: Проверить что записывается в maxDate
+// todo: Проверить правильно ли сравнивается дата, с maxDate
+// todo: Правильно ли считывается maxDate
+// todo: Где-то максимальной даты нет вообще. Проверить
 
 namespace parsing\platforms\zoon;
 
@@ -37,6 +42,8 @@ class ZoonModel implements ModelInterface
         }
     }
 
+
+
     private function updateSourceReviewConfig($records) : void
     {
         $database = new DatabaseShell();
@@ -61,7 +68,7 @@ class ZoonModel implements ModelInterface
         } elseif ($this->sourceInfo['handled'] === self::HANDLED_TRUE) {
             $sourceMeta = [
                 'count_reviews' => $records['count_reviews'],
-                'average_mark' => $records['average_mark'],
+                'average_mark'  => $records['average_mark'],
             ];
 
             $sourceConfig = [
@@ -76,15 +83,15 @@ class ZoonModel implements ModelInterface
         }
     }
 
+
+
     private function writeReviews($records) : void
     {
         $database = new DatabaseShell();
 
         if ($this->sourceInfo['handled'] === self::HANDLED_FALSE) {
             $database->insertReviews($records, $this->constInfo);
-
         } elseif ($this->sourceInfo['handled'] === self::HANDLED_TRUE) {
-
             foreach ($records as $record) {
                 if ($record['date'] > $this->sourceInfo['source_config']) {
                     $result[] = $record;
@@ -94,7 +101,10 @@ class ZoonModel implements ModelInterface
                     }
                 }
             }
-            $database->insertReviews($result, $this->constInfo);
+
+            if (isset($result)){
+                $database->insertReviews($result, $this->constInfo);
+            }
         }
     }
 }

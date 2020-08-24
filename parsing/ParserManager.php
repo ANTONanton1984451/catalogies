@@ -1,4 +1,5 @@
 <?php
+
 namespace parsing;
 
 use Exception;
@@ -9,12 +10,14 @@ class ParserManager
 {
     private $sources;
 
-    public function __construct() {
+    public function __construct()
+    {
         $this->sources = $this->getActualSources();
     }
 
-    public function parseSources() {
-        foreach ($this->sources as $source){
+    public function parseSources()
+    {
+        foreach ($this->sources as $source) {
             try {
                 $parser_factory = (new ParserFactory())->getFactory($source['platform']);
             } catch (Exception $e) {
@@ -27,9 +30,12 @@ class ParserManager
             $parser->setModel($parser_factory->buildModel());
             $parser->parseSource();
         }
+
+        return 'success';
     }
 
-    private function getActualSources() {
+    private function getActualSources()
+    {
         return (new DatabaseShell())->getActualSourceReviews();
     }
 }
