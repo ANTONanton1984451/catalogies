@@ -4,8 +4,8 @@ use parsing\ParserManager;
 use parsing\platforms\zoon\ZoonGetter;
 use parsing\platforms\zoon\ZoonFilter2;
 use parsing\platforms\zoon\ZoonModel;
-use parsing\DB\DatabaseShell;
-use Medoo\Medoo;
+
+
 require_once "autoloader.php";
 require_once "vendor/autoload.php";
 
@@ -13,15 +13,7 @@ ini_set('error_reporting', E_ALL);
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 
-$shell = new DatabaseShell();
 
 
-//(new ParserManager())->parseSources();
+(new ParserManager())->parseSources();
 
-$result = $shell->getNewSources(3);
-
-var_dump($result);
-
-$result = $shell->getActualSources(10,["'yell'"]);
-
-var_dump($result);
