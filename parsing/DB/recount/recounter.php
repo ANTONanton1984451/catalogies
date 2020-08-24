@@ -1,6 +1,6 @@
 <?php
 //Скрипт пересчёта коэффициентов
-require_once '../../vendor/autoload.php';
+require_once '../../../vendor/autoload.php';
 
 use Medoo\Medoo;
 

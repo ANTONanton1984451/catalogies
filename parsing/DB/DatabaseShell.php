@@ -18,18 +18,46 @@ class DatabaseShell
         $this->database = $this->getConnection();
     }
 
-    public function getActualSources(int $limit):array {
+    /**
+     * @param int $limit
+     * @param array $platforms
+     * @return array
+     * Площадки перечисляем в таком формате : ["'площадка'","'площадка'"]
+     */
+    public function getActualSources(int $limit , array $platforms):array {
+        $platformsSql = implode(",",$platforms);
         $dates = $this->calcPriorityDates();
-        $now = $dates['fourHoursAgo'];
-        $fourHoursAgo = $dates['minTime'];
+
+        $now = $dates['nowTime'];
+        $fourHoursAgo = $dates['fourHoursAgo'];
+
         return $this->database->query("SELECT ($now -`last_parse_date`) + `review_per_day` as priority,
-                                                      `source_hash_key` as source
+                                                      `task_queue`.`source_hash_key` as source,
+                                                      `source_config` as config,
+                                                      `track`,
+                                                      `platform`
                                                       FROM `task_queue`
+                                                      JOIN `source_review`
+                                                      ON task_queue.source_hash_key = source_review.source_hash
                                                       WHERE `last_parse_date` < $fourHoursAgo
+                                                      AND platform IN($platformsSql)
+                                                      AND actual = 'ACTIVE'
                                                       ORDER BY priority DESC
                                                       LIMIT $limit")
                                                       ->fetchAll(\PDO::FETCH_ASSOC);
 
+    }
+
+    public function getNewSources(int $limit):array
+    {
+        return $this->database->select('source_review',[
+           'source_hash',
+           'platform',
+           'source_config',
+           'track',
+        ],
+        ['handled'=>'NEW',
+         "LIMIT"=>$limit]);
     }
 
     // Work with Review

@@ -68,6 +68,7 @@ class TopDealersGetter implements GetterInterface
 
         }
 
+
         return $this->mainData;
     }
 
