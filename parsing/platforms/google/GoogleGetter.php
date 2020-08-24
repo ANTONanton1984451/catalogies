@@ -82,7 +82,6 @@ class GoogleGetter  implements GetterInterface
         }
 
         if($this->handle == 'NEW' && $this->mainData !== self::END_CODE){
-            // todo: Определиться с форматом хранения handled
 
                 $this->setLastReviewConfig();
                 $this->cutToTime($this->halfYearAgo);
