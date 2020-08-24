@@ -18,8 +18,18 @@ class DatabaseShell
         $this->database = $this->getConnection();
     }
 
-    public function getActualSourceReviews() {
-        return $this->database->select("source_review", "*");
+    public function getActualSources(int $limit):array {
+        $dates = $this->calcPriorityDates();
+        $now = $dates['fourHoursAgo'];
+        $fourHoursAgo = $dates['minTime'];
+        return $this->database->query("SELECT ($now -`last_parse_date`) + `review_per_day` as priority,
+                                                      `source_hash_key` as source
+                                                      FROM `task_queue`
+                                                      WHERE `last_parse_date` < $fourHoursAgo
+                                                      ORDER BY priority DESC
+                                                      LIMIT $limit")
+                                                      ->fetchAll(\PDO::FETCH_ASSOC);
+
     }
 
     // Work with Review
@@ -43,6 +53,17 @@ class DatabaseShell
     }
 
     public function deleteSourceReview() {}
+
+    private function calcPriorityDates():array
+    {
+        $nowTimeSeconds = time();
+        $nowTimeHours = round($nowTimeSeconds / 3600);
+        $fourHoursAgo = $nowTimeHours - 4;
+        return [
+                'nowTime' => $nowTimeHours,
+                'fourHoursAgo' => $fourHoursAgo
+               ];
+    }
 
     private function getConnection() {
         return new Medoo([

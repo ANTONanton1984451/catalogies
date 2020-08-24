@@ -76,7 +76,7 @@ class MigrationsManager {
                     "handled"               => [
                         "ENUM('NEW', 'HANDLED')",
                         "NOT NULL"
-                    ],
+                    ]
                 ]);
                 break;
 
@@ -118,22 +118,17 @@ class MigrationsManager {
 
             case self::TASK_QUEUE_TABLE:
                 $this->database->create(self::TASK_QUEUE_TABLE, [
-                    "id"         => [
-                        "INT",
-                        "NOT NULL",
-                        "AUTO_INCREMENT",
-                        "PRIMARY KEY"
-                    ],
                     "source_hash_key"   => [
                         "VARCHAR(40)",
                         "NOT NULL",
                     ],
-                    "status"            => [
-                        "ENUM('WAIT', 'COMPLETE')",
+                    "last_parse_date"   => [
+                        "INT",
                         "NOT NULL"
                     ],
-                    "action"            => [
-                        "ENUM('NOTHING')"
+                    "review_per_day"    => [
+                        "TINYINT",
+                        "NOT NULL"
                     ]
                 ]);
                 break;

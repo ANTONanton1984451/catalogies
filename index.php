@@ -15,3 +15,4 @@ ini_set('display_startup_errors', 1);
 
 
 (new ParserManager())->parseSources();
+
