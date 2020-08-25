@@ -136,6 +136,7 @@ class GoogleGetter  implements GetterInterface
      */
     public function setConfig($config)
     {
+        //todo::декодировать конфиги
         $this->source = $config['source'];
         $this->handle = $config['handle'];
         $this->mainData['config'] = $config['config'];

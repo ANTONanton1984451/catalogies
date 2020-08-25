@@ -40,7 +40,7 @@ class TopDealersGetter implements GetterInterface
 
     /**
      * @return int|array
-     * Метод выполняет получает отзывы и взависимости от флага handled применяет разные алгоритмы для получения отзывов
+     * Метод выполняет получает отзывы и в зависимости от флага handled применяет разные алгоритмы для получения отзывов
      */
     public function getNextRecords()
     {
@@ -68,7 +68,7 @@ class TopDealersGetter implements GetterInterface
 
         }
 
-
+        \phpQuery::unloadDocuments();
         return $this->mainData;
     }
 
