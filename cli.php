@@ -11,21 +11,24 @@ if (isset($argv[1])) {
     switch ($argv[1]) {
         case 'createSchema':
             $controller->createSchema();
+            echo "Create Schema is ready \n";
             break;
 
         case 'updateSchema':
             $controller->dropTables();
             $controller->createSchema();
+            echo "Update Schema is ready \n";
             break;
 
         case 'dropTables':
             $controller->dropTables();
+            echo "Drop Tables is ready \n";
             break;
 
         default:
-            echo 'Unknown command';
+            echo "Unknown command \n";
     }
 } else {
-    echo 'Enter parameter...';
+    echo "Enter parameter... \n";
     exit();
 }

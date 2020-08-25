@@ -29,6 +29,7 @@ class ParserManager
             $parser->setFilter($parser_factory->buildFilter());
             $parser->setModel($parser_factory->buildModel());
             $parser->parseSource();
+            sleep(40);
         }
 
         return 'success';

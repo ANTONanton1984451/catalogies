@@ -8,10 +8,13 @@ use phpQuery;
 class ZoonGetter implements GetterInterface
 {
     private $status;
+    private $handled;
+
     private $addQueryParameters;
     private $activeListReviews;
 
     private $metaRecord;
+    private $oldHash;
 
     const HOST = 'https://zoon.ru/js.php?';
 
@@ -35,6 +38,7 @@ class ZoonGetter implements GetterInterface
     const STATUS_END = 2;
 
 
+
     public function __construct(){
         $this->addQueryParameters['owner[]'] = 'prof';
         $this->activeListReviews = 0;
@@ -44,9 +48,11 @@ class ZoonGetter implements GetterInterface
     public function setConfig($config) {
         $this->setMetaRecord($config['source']);
 
-    //    if ($config['handled'] === self::HANDLED_TRUE) {
-    //        todo: Сделать считывание хэш суммы
-    //    }
+        $this->handled = $config['handled'];
+
+        if ($this->handled === self::HANDLED_TRUE) {
+            $this->oldHash = json_decode($config['source_config'], true)['old_hash'];
+        }
     }
 
     private function setMetaRecord($source) {
@@ -63,12 +69,11 @@ class ZoonGetter implements GetterInterface
         phpQuery::unloadDocuments();
     }
 
-
-
     public function getNextRecords(){
-        switch ($status) {
+        switch ($this->status) {
             case self::STATUS_REVIEWS:
                 $records = $this->getReviews();
+                $records = $this->validateReviews($records);
                 break;
 
             case self::STATUS_META_RECORD:
@@ -82,6 +87,12 @@ class ZoonGetter implements GetterInterface
             default:
                 throw new Exception("Unknown Status");
         }
+
+    if ($this->status != self::STATUS_REVIEWS) {
+        if (isset($records['average_mark'])) {
+            var_dump($records);
+        }
+    }
 
     return $records;
 }
@@ -101,5 +112,31 @@ class ZoonGetter implements GetterInterface
 
     private function getEndCode(){
         return self::END_CODE;
+    }
+
+    private function validateReviews($records)
+    {
+        if ($this->handled === self::HANDLED_TRUE) {
+            if ($this->oldHash == md5($records)) {
+                $this->status = self::STATUS_END;
+                $records = $this->getMetaRecord();
+                return $records;
+            }
+        } elseif ($this->activeListReviews == 1) {
+            $this->metaRecord['old_hash'] = md5($records);
+        }
+
+        $records = json_decode($records);
+
+        if ($records->remain == 0 && $records->list != '') {
+           $this->status = self::STATUS_META_RECORD;
+        }
+
+        if ($records->list == '') {
+            $this->status = self::STATUS_END;
+            $records = $this->getMetaRecord();
+        }
+
+        return $records;
     }
 }

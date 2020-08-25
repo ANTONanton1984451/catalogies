@@ -1,20 +1,18 @@
 <?php
-// todo: Разбить на более мелкие функции
-// todo: Проверить что записывается в maxDate
-// todo: Проверить правильно ли сравнивается дата, с maxDate
-// todo: Правильно ли считывается maxDate
-// todo: Где-то максимальной даты нет вообще. Проверить
+// todo: Рефактор модели
 
 namespace parsing\platforms\zoon;
 
 use parsing\DB\DatabaseShell;
 use parsing\factories\factory_interfaces\ModelInterface;
+use parsing\ParserManager;
 
 class ZoonModel implements ModelInterface
 {
     private $constInfo;
-    private $sourceInfo;
+    private $source;
     private $maxDate;
+    private $sourceConfig;
 
     const HANDLED_TRUE = 'HANDLED';
     const HANDLED_FALSE = 'NEW';
@@ -27,10 +25,17 @@ class ZoonModel implements ModelInterface
         $this->maxDate = 0;
     }
 
-    public function setConfig($sourceInfo) : void
+    public function setConfig($source) : void
     {
-        $this->sourceInfo = $sourceInfo;
-        $this->constInfo['source_hash_key'] = $this->sourceInfo['source_hash'];
+        $this->source = $source;
+
+        $this->sourceConfig = json_decode($this->source['source_config'], true);
+
+        if (isset($this->sourceConfig['max_date'])) {
+            $this->maxDate = $this->sourceConfig['max_date'];
+        }
+
+        $this->constInfo['source_hash_key'] = $this->source['source_hash'];
     }
 
     public function writeData($records) : void
@@ -42,13 +47,11 @@ class ZoonModel implements ModelInterface
         }
     }
 
-
-
     private function updateSourceReviewConfig($records) : void
     {
         $database = new DatabaseShell();
 
-        if ($this->sourceInfo['handled'] === self::HANDLED_FALSE) {
+        if ($this->source['handled'] === self::HANDLED_FALSE) {
             $sourceMeta = [
                 'count_reviews' => $records['count_reviews'],
                 'average_mark' => $records['average_mark'],
@@ -59,48 +62,58 @@ class ZoonModel implements ModelInterface
                 'old_hash' => $records['old_hash'],
             ];
 
-            $database->updateSourceReview($this->sourceInfo['source_hash'], [
+            var_dump($sourceConfig);
+
+            $database->updateSourceReview($this->source['source_hash'], [
                 'source_meta_info' => json_encode($sourceMeta),
                 'source_config' => json_encode($sourceConfig),
                 'handled' => self::HANDLED_TRUE
             ]);
 
-        } elseif ($this->sourceInfo['handled'] === self::HANDLED_TRUE) {
+        } elseif ($this->source['handled'] === self::HANDLED_TRUE) {
             $sourceMeta = [
                 'count_reviews' => $records['count_reviews'],
                 'average_mark'  => $records['average_mark'],
             ];
 
-            $sourceConfig = [
-                'max_date' => $this->maxDate,
-                'old_hash' => $records['old_hash'],
-            ];
+            $sourceConfig['max_date'] = $this->maxDate;
 
-            $database->updateSourceReview($this->sourceInfo['source_hash'], [
+            if (isset($records['old_hash'])) {
+                $sourceConfig['old_hash'] = $records['old_hash'];
+            } else {
+                $sourceConfig['old_hash'] = $this->sourceConfig['old_hash'];
+            }
+
+            var_dump($sourceConfig);
+
+            $database->updateSourceReview($this->source['source_hash'], [
                 'source_meta_info' => json_encode($sourceMeta),
                 'source_config' => json_encode($sourceConfig)
             ]);
         }
     }
 
-
-
     private function writeReviews($records) : void
     {
         $database = new DatabaseShell();
 
-        if ($this->sourceInfo['handled'] === self::HANDLED_FALSE) {
+        if ($this->source['handled'] === self::HANDLED_FALSE) {
             $database->insertReviews($records, $this->constInfo);
-        } elseif ($this->sourceInfo['handled'] === self::HANDLED_TRUE) {
+
+        } elseif ($this->source['handled'] === self::HANDLED_TRUE) {
+            $tempMaxDate = $this->maxDate;
+
             foreach ($records as $record) {
-                if ($record['date'] > $this->sourceInfo['source_config']) {
+                if ($record['date'] > $this->maxDate) {
                     $result[] = $record;
 
-                    if ($record['date'] > $this->maxDate) {
-                        $this->maxDate = $record['date'];
+                    if ($record['date'] > $tempMaxDate) {
+                        $tempMaxDate = $record['date'];
                     }
                 }
             }
+
+            $this->maxDate = $tempMaxDate;
 
             if (isset($result)){
                 $database->insertReviews($result, $this->constInfo);

@@ -12,9 +12,9 @@ ini_set('error_reporting', E_ALL);
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 
+setSource(['https://volgograd.zoon.ru/restaurants/bar_vedrov/']);
 loopGo();
 
-//setSource(['https://volgograd.zoon.ru/restaurants/bar_vedrov/']);
 
 function setSource(array $sources)
 {
@@ -32,19 +32,15 @@ function setSource(array $sources)
 }
 
 function loopGo() {
-//    $worker = new Worker();
-//    $worker->count = 1;
-//    $worker->name = "Worker for catalogs module";
-//    $worker->onWorkerStart = (function (){
-//        $timeInterval = 20;
-//        $timerId = Timer::add($timeInterval, function () {
+    $worker = new Worker();
+    $worker->count = 1;
 
-        $manager = new ParserManager();
-        $manager->parseSources();
-//
-//        });
-//    });
-//
-//    Worker::runAll();
+    $worker->onWorkerStart = function ($worker) {
+        $timeInterval = 50;
+        $timerId = Timer::add($timeInterval, function () {
+            (new ParserManager())->parseSources();
+        });
+    };
 
+    Worker::runAll();
 }
