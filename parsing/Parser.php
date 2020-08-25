@@ -1,7 +1,5 @@
 <?php
 // todo: Добавлять notifies для каждого нового отзыва
-// todo: Проверить, как будет вести себя проверка, если заместо массива, будет объект проверяться в if
-// todo:
 
 namespace parsing;
 
@@ -11,10 +9,10 @@ use parsing\factories\factory_interfaces\ModelInterface;
 
 class Parser
 {
-    const MESSAGE_END       = 0;
-    const MESSAGE_START     = 1;
+    const MESSAGE_END = 0;
+    const MESSAGE_START = 1;
 
-    const END_CODE          = 42;
+    const END_CODE = 42;
 
     private $status = self::MESSAGE_START;
 
@@ -31,11 +29,12 @@ class Parser
         $this->config = $config;
     }
 
-    public function parseSource() {
+
+    public function parseSource()
+    {
         $this->getter->setConfig($this->config);
         $this->filter->setConfig($this->config);
         $this->model->setConfig($this->config);
-
 
         while ($this->status != self::MESSAGE_END) {
             $buffer = $this->getter->getNextRecords();
@@ -45,23 +44,29 @@ class Parser
                 continue;
             }
             $buffer = $this->filter->clearData($buffer);
-            var_dump($buffer);
             $this->model->writeData($buffer);
-
         }
+
+        echo "It's ready {$this->config['source']} \n";
     }
 
-    public function setGetter(GetterInterface $getter)  : void {
+    public function setGetter(GetterInterface $getter): void
+    {
         $this->getter = $getter;
     }
-    public function setFilter(FilterInterface $filter)  : void {
+
+    public function setFilter(FilterInterface $filter): void
+    {
         $this->filter = $filter;
     }
-    public function setModel(ModelInterface $model)    : void {
+
+    public function setModel(ModelInterface $model): void
+    {
         $this->model = $model;
     }
 
-    public function generateJsonMessage() {
+    public function generateJsonMessage()
+    {
         return json_encode($this->notifies);
     }
 }
