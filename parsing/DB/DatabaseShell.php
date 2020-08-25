@@ -1,5 +1,5 @@
 <?php
-// todo: singletone?
+// todo: singleton?
 // todo: Подумать над добавлением onUpdate реакций для внешних ключей
 // todo: Refactor getActualSourceReview
 // todo: Да и в целом, явно требуется рефакторинг и отладка данного класса

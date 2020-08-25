@@ -7,44 +7,106 @@ use phpQuery;
 
 class YellGetter implements GetterInterface
 {
-    const END_CODE = 42;
+    const STATUS_ACTIVE = 0;
+    const STATUS_END = 1;
 
     const HOST = 'https://www.yell.ru/company/reviews/?';
+    const EMPTY_RECORD = 64;
 
-    private $active_list_reviews;
-    private $add_query_info = ['sort' => 'recent'];
+    private $status;
+    private $activePage;
 
-    protected $source;      // Информация, поступающая в getter из Controller'a
-    protected $track;       // Какие отзывы отслеживаем
-    protected $handled;     // Обрабатывалась ли ссылка ранее
+    private $source;
+    private $handled;
+    private $oldHash;
 
-    public function __construct() {
-        $this->active_list_reviews = 1;
-        $this->add_query_info['page'] = $this->active_list_reviews;
+    private $queryInfo;
+
+
+
+    public function __construct()
+    {
+        $this->status = self::STATUS_ACTIVE;
+        $this->activePage = 1;
+        $this->queryInfo = [
+            'sort' => 'recent',
+            'page' => $this->activePage,
+        ];
     }
 
-    public function getNextRecords() {
-        $data = file_get_contents(self::HOST . http_build_query($this->add_query_info));
-        if (strlen($data) == 64) {
-            $data = self::END_CODE;
-        }
-
-        $this->add_query_info['page'] = $this->active_list_reviews++;
-
-        return $data;
-    }
-
-    public function setConfig($config) : void {
-        $this->handled  = $config['handled'];
-        $this->source   = $config['source'];
-        $this->track    = $config['track'];
+    public function setConfig($config) : void
+    {
+        $this->source = $config['source'];
+        $this->handled = $config['handled'];
+        $this->oldHash = $config['source_config']['oldHash'];
         $this->getOrganizationId();
     }
 
-    private function getOrganizationId() : void {
-        $source_page = file_get_contents($this->source);
-        $doc = phpQuery::newDocument($source_page);
-        $this->add_query_info['id'] = $doc->find('.company.company_paid')->attr('data-id');
+    private function getOrganizationId() : void
+    {
+        $sourcePage = file_get_contents($this->source);
+        $document = phpQuery::newDocument($sourcePage);
+        $id = $document->find('.company.company_default')->attr('data-id');
+        $this->queryInfo['id'] = $id;
         phpQuery::unloadDocuments();
+    }
+
+
+
+    public function getNextRecords()
+    {
+        if ($this->status === self::STATUS_END) {
+            $records = $this->getEndCode();
+        }
+
+        if ($this->status === self::STATUS_ACTIVE) {
+            $records = $this->getReviews();
+
+            if (strlen($records) === self::EMPTY_RECORD) {
+                $records = $this->getMetaInfo();
+                $this->status = self::STATUS_END;
+            }
+        }
+
+        return $records;
+    }
+
+    private function getReviews()
+    {
+        if ($this->handled === 'NEW') {
+            $records = file_get_contents(self::HOST . http_build_query($this->queryInfo));
+            $this->queryInfo['page'] = ++$this->activePage;
+        }
+
+        if ($this->handled === 'HANDLED') {
+            $records = file_get_contents(self::HOST . http_build_query($this->queryInfo));
+            if ($this->isEqualsHash(md5($records))) {
+                $records = self::EMPTY_RECORD;
+            }
+        }
+
+        return $records;
+    }
+
+    private function getMetaInfo()
+    {
+        $sourcePage = file_get_contents($this->source);
+        $document = phpQuery::newDocument($sourcePage);
+
+        $records['average_mark'] = $document->find('div.company__rating span.rating__value')->text();
+        $records['count_reviews'] = $document->find('span.rating__reviews span')->text();
+
+        phpQuery::unloadDocuments();
+        return $records;
+    }
+
+    private function getEndCode()
+    {
+        return self::END_CODE;
+    }
+
+    private function isEqualsHash(string $md5): bool
+    {
+        return $this->oldHash === $md5;
     }
 }
