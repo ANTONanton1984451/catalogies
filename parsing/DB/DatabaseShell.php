@@ -14,7 +14,8 @@ class DatabaseShell
 {
     private $database;
 
-    public function __construct() {
+    public function __construct()
+    {
         $this->database = $this->getConnection();
     }
 
@@ -24,84 +25,92 @@ class DatabaseShell
      * @return array
      * Площадки перечисляем в таком формате : ["'площадка'","'площадка'"]
      */
-    public function getActualSources(int $limit , array $platforms):array {
-        $platformsSql = implode(",",$platforms);
+    public function getActualSources(int $limit, array $platforms): array
+    {
+        $platformsSql = implode(",", $platforms);
         $dates = $this->calcPriorityDates();
 
         $now = $dates['nowTime'];
         $fourHoursAgo = $dates['fourHoursAgo'];
 
-        return $this->database->query("SELECT ($now -`last_parse_date`) + `review_per_day` as priority,
-                                                      `task_queue`.`source_hash_key` as source,
-                                                      `source_config` as config,
-                                                      `track`,
-                                                      `platform`
-                                                      FROM `task_queue`
-                                                      JOIN `source_review`
-                                                      ON task_queue.source_hash_key = source_review.source_hash
-                                                      WHERE `last_parse_date` < $fourHoursAgo
-                                                      AND platform IN($platformsSql)
-                                                      AND actual = 'ACTIVE'
-                                                      ORDER BY priority DESC
-                                                      LIMIT $limit")
-                                                      ->fetchAll(\PDO::FETCH_ASSOC);
+        return $this->database->query("
+            SELECT ($now -`last_parse_date`) + `review_per_day` as priority,
+                `task_queue`.`source_hash_key` as source,
+                `source_config` as config,
+                `track`,
+                `platform`
+            FROM `task_queue`
+            JOIN `source_review`
+            ON task_queue.source_hash_key = source_review.source_hash
+            WHERE `last_parse_date` < $fourHoursAgo
+            AND platform IN($platformsSql)
+            AND actual = 'ACTIVE'
+            ORDER BY priority DESC
+            LIMIT $limit
+            ")
+            ->fetchAll(\PDO::FETCH_ASSOC);
 
     }
 
-    public function getNewSources(int $limit):array
+    public function getNewSources(int $limit): array
     {
-        return $this->database->select('source_review',[
-           'source_hash',
-           'platform',
-           'source_config',
-           'track',
+        return $this->database->select('source_review', [
+            'source_hash',
+            'platform',
+            'source_config',
+            'track',
         ],
-        ['handled'=>'NEW',
-         "LIMIT"=>$limit]);
-    }
+        [
+            'handled' => 'NEW',
+            "LIMIT" => $limit
+        ]);
+}
 
     // Work with Review
-    public function insertReviews(array $reviews, array $constInfo = []) {
+    public function insertReviews(array $reviews, array $constInfo = [])
+    {
         foreach ($reviews as $review) {
             $this->database->insert("review", array_merge($review, $constInfo));
         }
     }
 
     // Work with Source Review
-    public function insertSourceReview(array $source_review) {
+    public function insertSourceReview(array $source_review)
+    {
         $this->database->insert('source_review', $source_review);
     }
 
-    public function updateSourceReview($source_hash, $updateData) {
-        $this->database->update("source_review", $updateData, ["source_hash"=>$source_hash]);
+    public function updateSourceReview($source_hash, $updatedRecords)
+    {
+        $this->database->update("source_review", $updatedRecords, ["source_hash" => $source_hash]);
     }
 
-    public function getSourceReview($source_hash) {
+    public function getSourceReview($source_hash)
+    {
         $this->database->select("source_review", "*", ["source_hash" => $source_hash]);
     }
 
-    public function deleteSourceReview() {}
-
-    private function calcPriorityDates():array
+    private function calcPriorityDates(): array
     {
         $nowTimeSeconds = time();
         $nowTimeHours = round($nowTimeSeconds / 3600);
         $fourHoursAgo = $nowTimeHours - 4;
         return [
-                'nowTime' => $nowTimeHours,
-                'fourHoursAgo' => $fourHoursAgo
-               ];
+            'nowTime' => $nowTimeHours,
+            'fourHoursAgo' => $fourHoursAgo
+        ];
     }
 
-    private function getConnection() {
+    private function getConnection()
+    {
         return new Medoo([
-            'database_type'     => 'mysql',
-            'database_name'     => 'test',
-            'server'            => 'localhost',
-            'username'          => 'root',
-            'password'          => '',
-            'option'            => [
-                PDO::ATTR_ERRMODE   =>  PDO::ERRMODE_EXCEPTION
+            'database_type' => 'mysql',
+            'database_name' => 'test',
+            'server' => 'localhost',
+            'username' => 'borland',
+            'password' => 'attache1974',
+            'option' => [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
             ]
         ]);
     }

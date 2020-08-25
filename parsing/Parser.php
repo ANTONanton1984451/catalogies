@@ -45,7 +45,6 @@ class Parser
                 continue;
             }
             $buffer = $this->filter->clearData($buffer);
-            var_dump($buffer);
             $this->model->writeData($buffer);
 
         }

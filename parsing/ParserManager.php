@@ -10,11 +10,12 @@ class ParserManager
     private $sources;
 
     public function __construct() {
-        $this->sources = $this->getActualSources();
+//        $this->sources = $this->getActualSources();
     }
 
     public function parseSources() {
         foreach ($this->sources as $source){
+
             try {
                 $parser_factory = (new ParserFactory())->getFactory($source['platform']);
             } catch (Exception $e) {
@@ -31,15 +32,5 @@ class ParserManager
 
     private function getActualSources() {
 //        return (new DatabaseShell())->getActualSourceReviews();
-        return [
-            [
-                'source'=>'https://topdealers.ru/brands/kia/moskva/2406/',
-                'handle'=>'NEW',
-                'platform'=>'topdealers',
-                'source_hash'=>'dsfsfs',
-                'config'=>[]
-            ]
-
-               ];
     }
 }
