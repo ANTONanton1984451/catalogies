@@ -3,9 +3,8 @@
 namespace parsing\logger;
 
 
-use Monolog\Formatter\HtmlFormatter;
+
 use Monolog\Formatter\LineFormatter;
-use Monolog\Formatter\NormalizerFormatter;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\FirePHPHandler;
