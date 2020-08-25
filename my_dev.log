@@ -1,5 +1,0 @@
-[2020-08-25T08:19:32.234497+03:00] dev.INFO: My logger is now ready [] []
-[2020-08-25T08:32:12.826321+03:00] dev.INFO: My logger is now ready [] []
-[2020-08-25T08:36:04.005690+03:00] dev.INFO: test [] []
-[2020-08-25T08:36:23.080850+03:00] dev.DEBUG: test [] []
-[2020-08-25T08:56:06.387002+03:00] dev.WARNING: test {"data":"test"} []

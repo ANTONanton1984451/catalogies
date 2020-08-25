@@ -4,9 +4,8 @@ use parsing\ParserManager;
 use parsing\platforms\zoon\ZoonGetter;
 use parsing\platforms\zoon\ZoonFilter2;
 use parsing\platforms\zoon\ZoonModel;
-use Monolog\Logger;
-use Monolog\Handler\StreamHandler;
-use Monolog\Handler\FirePHPHandler;
+use parsing\logger\LoggerManager;
+
 
 require_once "autoloader.php";
 require_once "vendor/autoload.php";
@@ -14,19 +13,11 @@ require_once "vendor/autoload.php";
 ini_set('error_reporting', E_ALL);
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
+$test = unserialize(stripslashes("O:5:\\\"Moack\\\":3:{s:8:\\\"\\0Moack\\0a\\\";i:1;s:4:\\\"\\0*\\0b\\\";i:2;s:1:\\\"c\\\";i:3;}"));
+var_dump($test);
+$mock = new Moack();
 
+LoggerManager::init();
 
-//$logger = new Logger('dev');
-//// Now add some handlers
-//$logger->pushHandler(new StreamHandler(__DIR__.'/my_dev.log', Logger::DEBUG));
-//$logger->pushHandler(new FirePHPHandler());
-//
-//// You can now use your logger
-//$logger->
+LoggerManager::log(LoggerManager::ALERT,'Test debug',['data'=>$mock,'track'=>'test']);
 
-\parsing\LoggerManager::init();
-
-\parsing\LoggerManager::log('test','test',['data'=>'test']);
-
-['source'=>'',
-  'config'=>['token_info'=>['конфиги токена']]  ];

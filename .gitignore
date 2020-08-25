@@ -1,3 +1,5 @@
 .idea/
 vendor/
 chernovik.txt
+my_dev.log
+log_files/
