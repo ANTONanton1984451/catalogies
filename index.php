@@ -6,11 +6,7 @@ require_once "autoloader.php";
 use parsing\DB\DatabaseShell;
 use Workerman\Worker;
 use Workerman\Timer;
-use parsing\ParserManager;
 
-ini_set('error_reporting', E_ALL);
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
 
 //setSource(['https://volgograd.zoon.ru/restaurants/kapuchino_v_krasnooktyabrskom_rajone/']);
 //loopGo();
@@ -31,7 +27,8 @@ function setSource(array $sources)
     }
 }
 
-function loopGo() {
+function loopGo()
+{
     $worker = new Worker();
     $worker->count = 1;
 

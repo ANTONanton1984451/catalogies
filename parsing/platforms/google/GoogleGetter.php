@@ -82,7 +82,6 @@ class GoogleGetter  implements GetterInterface
         }
 
         if($this->handle == 'NEW' && $this->mainData !== self::END_CODE){
-            // todo: Определиться с форматом хранения handled
 
                 $this->setLastReviewConfig();
                 $this->cutToTime($this->halfYearAgo);
@@ -137,6 +136,7 @@ class GoogleGetter  implements GetterInterface
      */
     public function setConfig($config)
     {
+        //todo::декодировать конфиги
         $this->source = $config['source'];
         $this->handle = $config['handle'];
         $this->mainData['config'] = $config['config'];
