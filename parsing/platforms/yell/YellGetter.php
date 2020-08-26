@@ -1,4 +1,5 @@
 <?php
+// todo: Сделать проверку, и найти гарантированный способ доставать id сайта
 
 namespace parsing\platforms\yell;
 
@@ -21,13 +22,14 @@ class YellGetter implements GetterInterface
     private $oldHash;
 
     private $queryInfo;
-
+    private $metaRecord;
 
 
     public function __construct()
     {
         $this->status = self::STATUS_ACTIVE;
         $this->activePage = 1;
+
         $this->queryInfo = [
             'sort' => 'recent',
             'page' => $this->activePage,
@@ -36,9 +38,9 @@ class YellGetter implements GetterInterface
 
     public function setConfig($config) : void
     {
-        $this->source = $config['source'];
+        $this->source =  $config['source'];
         $this->handled = $config['handled'];
-        $this->oldHash = $config['source_config']['oldHash'];
+        $this->oldHash = json_decode($config['source_config'])['oldHash'];
         $this->getOrganizationId();
     }
 
@@ -46,8 +48,12 @@ class YellGetter implements GetterInterface
     {
         $sourcePage = file_get_contents($this->source);
         $document = phpQuery::newDocument($sourcePage);
-        $id = $document->find('.company.company_default')->attr('data-id');
-        $this->queryInfo['id'] = $id;
+
+        $this->queryInfo['id'] = $document->find('div.company.company_paid')->attr('data-id');
+
+        $this->metaRecord['average_mark'] = $document->find('div.company__rating span.rating__value')->text();
+        $this->metaRecord['count_reviews'] = $document->find('span.rating__reviews span')->text();
+
         phpQuery::unloadDocuments();
     }
 
@@ -75,7 +81,12 @@ class YellGetter implements GetterInterface
     {
         if ($this->handled === 'NEW') {
             $records = file_get_contents(self::HOST . http_build_query($this->queryInfo));
-            $this->queryInfo['page'] = ++$this->activePage;
+
+            if ($this->activePage == 1) {
+                $this->metaRecord['old_hash'] = md5($records);
+            }
+
+            $this->queryInfo['page'] = $this->activePage++;
         }
 
         if ($this->handled === 'HANDLED') {
@@ -90,14 +101,7 @@ class YellGetter implements GetterInterface
 
     private function getMetaInfo()
     {
-        $sourcePage = file_get_contents($this->source);
-        $document = phpQuery::newDocument($sourcePage);
-
-        $records['average_mark'] = $document->find('div.company__rating span.rating__value')->text();
-        $records['count_reviews'] = $document->find('span.rating__reviews span')->text();
-
-        phpQuery::unloadDocuments();
-        return $records;
+        return $this->metaRecord;
     }
 
     private function getEndCode()

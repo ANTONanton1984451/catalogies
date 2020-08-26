@@ -173,18 +173,6 @@ class MigrationsManager
             'https://topdealers.ru/brands/bmw/moskva/2201/',
             'https://topdealers.ru/brands/renault/belgorod/1425/',
         ];
-
-        $googleSourceReview = [
-            'source' => 'accounts/101148201288830043360/locations/5839617167530752762',
-            'source_config' =>  json_encode([
-                'access_token' => 'ya29.a0AfH6SMC2vIRifpmGxmqj7IfphUhAPG8i9KMWGnr04TZ5RucPNWTLuUNy-qRJ1fpjpVTNTZCyHuJCaWTv_m9G78Fn_gJO2VeOToSYbvz2QkMcjl__0YrMS74vXQmzx2gAX0zIrAc-qx2TQCMgpUI_P89kj0p1OurhH40',
-                'expires_in' => 3599,
-                'refresh_token' => '1//0cg7RCGjabTR2CgYIARAAGAwSNwF-L9IrGGe5SojDMLp6RXZ8HYHdbY1m3pvKKfBGNqpKVihjX9VhSTxNv7FpdGfhBrpedAZsVdI',
-                'scope' => 'https://www.googleapis.com/auth/business.manage',
-                'token_type' => 'Bearer',
-                'created' => 1598335250
-            ])
-        ];
     }
 
     private function getConnection()

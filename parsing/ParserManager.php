@@ -29,13 +29,13 @@ class ParserManager
             $parser->setFilter($parser_factory->buildFilter());
             $parser->setModel($parser_factory->buildModel());
             $parser->parseSource();
-            sleep(40);
         }
 
         return 'success';
     }
     private function getActualSources()
     {
-        return (new DatabaseShell())->getActualSourceReviews();
+//        return (new DatabaseShell())->getActualSources(1, ["'yell'"]);
+        return (new DatabaseShell())->getNewSources(1);
     }
 }

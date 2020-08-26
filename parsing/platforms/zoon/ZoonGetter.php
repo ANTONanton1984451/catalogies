@@ -1,61 +1,106 @@
 <?php
-
 namespace parsing\platforms\zoon;
 
 use parsing\factories\factory_interfaces\GetterInterface;
 use phpQuery;
 
-class ZoonGetter implements GetterInterface
-{
-    private $status;
-    private $handled;
+class ZoonGetter implements GetterInterface {
 
-    private $addQueryParameters;
-    private $activeListReviews;
+    private $handled;
+    private $sourceConfig;
 
     private $metaRecord;
-    private $oldHash;
 
-    const HOST = 'https://zoon.ru/js.php?';
+    private $isEnd = false;
+    private $isReviewsSended = false;
 
-    const QUERY_CONSTANT_PARAMETERS = [
-        'area' => 'service',
-        'action' => 'CommentList',
-        'owner[]' => 'organization',
-        'is_widget' => 1,
-        'strategy_options[with_photo]' => 0,
-        'allow_comment' => 0,
-        'allow_share' => 0,
-        'limit' => self::REVIEWS_LIMIT,
+    private $activePage = 0;
+
+    const EMPTY_PARAMETERS = '';
+    const EMPTY_REVIEWS = '';
+
+    const REVIEWS_LIMIT = 102;
+
+    const QUERY_CONSTANT_PARAMETERS = 'https://zoon.ru/js.php?area=service&action=CommentList&owner[]=organization&' .
+    'is_widget=1&strategy_options[with_photo]=0&allow_comment=0&allow_share=0&limit=' . self::REVIEWS_LIMIT;
+
+    private $addQueryParameters = [
+        'owner[]' => 'prof',
+        'organization' => self::EMPTY_PARAMETERS,
+        'skip' => self::EMPTY_PARAMETERS,
     ];
 
-    const REVIEWS_LIMIT = 100;
-
-    const SKIP = 'skip';
-
-    const STATUS_REVIEWS = 0;
-    const STATUS_META_RECORD = 1;
-    const STATUS_END = 2;
-
-
-
-    public function __construct(){
-        $this->addQueryParameters['owner[]'] = 'prof';
-        $this->activeListReviews = 0;
-        $this->status = self::STATUS_REVIEWS;
-    }
-
     public function setConfig($config) {
-        $this->setMetaRecord($config['source']);
-
         $this->handled = $config['handled'];
-
-        if ($this->handled === self::HANDLED_TRUE) {
-            $this->oldHash = json_decode($config['source_config'], true)['old_hash'];
-        }
+        $this->sourceConfig = json_decode($config['source_config'], true);
+        $this->metaRecord = $this->generateMetaRecord($config['source']);
     }
 
-    private function setMetaRecord($source) {
+    public function getNextRecords(){
+        if ($this->handled === 'HANDLED') {
+            $records = $this->parseHandledSource();
+        } else {
+            $records = $this->parseNewSource();
+        }
+
+        var_dump($this->isEnd);
+
+        return $records;
+    }
+
+    private function parseHandledSource() {
+        if ($this->isEnd == true) {
+            $records = $this->getEndCode();
+        } else {
+
+            $records = $this->getReviews();
+            if ($this->isEqualsHash(md5($records)) || $this->isReviewsSended == true) {
+                $records = $this->getMetaRecord();
+                $this->isEnd = true;
+            } else {
+                $records = json_decode($records);
+                $this->isReviewsSended = true;
+            }
+        }
+
+        return $records;
+    }
+
+    private function parseNewSource() {
+        if ($this->isEnd == true) {
+            $records = $this->getEndCode();
+        } else {
+
+            $records = $this->getReviews();
+            if ($this->activePage == 1) {
+                $this->metaRecord['hash'] = md5($records);
+            }
+
+            $records = json_decode($records);
+            if ($records->list == self::EMPTY_REVIEWS) {
+                $records = $this->getMetaRecord();
+                $this->isEnd = true;
+            }
+        }
+
+        return $records;
+    }
+
+    private function getReviews() {
+        $this->addQueryParameters['skip'] = $this->activePage++ * self::REVIEWS_LIMIT;
+        $addQuery = http_build_query($this->addQueryParameters);
+        return file_get_contents(self::QUERY_CONSTANT_PARAMETERS . '&' . $addQuery);
+    }
+
+    private function getMetaRecord() {
+        return $this->metaRecord;
+    }
+
+    private function getEndCode() {
+        return self::END_CODE;
+    }
+
+    private function generateMetaRecord($source) {
         $file = file_get_contents($source);
         $document = phpQuery::newDocument($file);
 
@@ -63,80 +108,15 @@ class ZoonGetter implements GetterInterface
             ->find('.comments-section')->attr('data-owner-id');
 
         $countReviews = $document->find('.fs-large.gray.js-toggle-content')->text();
-        $this->metaRecord['count_reviews'] = explode(' ', trim($countReviews))[0];
-        $this->metaRecord['average_mark'] = $document->find('span.rating-value')->text();
+        $metaRecord['count_reviews'] = explode(' ', trim($countReviews))[0];
+        $metaRecord['average_mark'] = $document->find('span.rating-value')->text();
 
         phpQuery::unloadDocuments();
+
+        return $metaRecord;
     }
 
-    public function getNextRecords(){
-        switch ($this->status) {
-            case self::STATUS_REVIEWS:
-                $records = $this->getReviews();
-                $records = $this->validateReviews($records);
-                break;
-
-            case self::STATUS_META_RECORD:
-                $records = $this->getMetaRecord();
-                break;
-
-            case self::STATUS_END:
-                $records = $this->getEndCode();
-                break;
-
-            default:
-                throw new Exception("Unknown Status");
-        }
-
-    if ($this->status != self::STATUS_REVIEWS) {
-        if (isset($records['average_mark'])) {
-            var_dump($records);
-        }
-    }
-
-    return $records;
-}
-
-    private function getReviews(){
-        $this->addQueryParameters[self::SKIP] = $this->activeListReviews++ * self::REVIEWS_LIMIT;
-
-        $query = self::HOST . http_build_query(self::QUERY_CONSTANT_PARAMETERS) .
-            '&' . http_build_query($this->addQueryParameters);
-
-        return file_get_contents($query);
-    }
-
-    private function getMetaRecord(){
-        return $this->metaRecord;
-    }
-
-    private function getEndCode(){
-        return self::END_CODE;
-    }
-
-    private function validateReviews($records)
-    {
-        if ($this->handled === self::HANDLED_TRUE) {
-            if ($this->oldHash == md5($records)) {
-                $this->status = self::STATUS_END;
-                $records = $this->getMetaRecord();
-                return $records;
-            }
-        } elseif ($this->activeListReviews == 1) {
-            $this->metaRecord['old_hash'] = md5($records);
-        }
-
-        $records = json_decode($records);
-
-        if ($records->remain == 0 && $records->list != '') {
-           $this->status = self::STATUS_META_RECORD;
-        }
-
-        if ($records->list == '') {
-            $this->status = self::STATUS_END;
-            $records = $this->getMetaRecord();
-        }
-
-        return $records;
+    private function isEqualsHash($hash) {
+        return $hash === $this->sourceConfig['old_hash'];
     }
 }

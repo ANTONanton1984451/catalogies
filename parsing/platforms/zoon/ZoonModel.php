@@ -1,123 +1,106 @@
 <?php
-// todo: Рефактор модели
 
 namespace parsing\platforms\zoon;
 
 use parsing\DB\DatabaseShell;
 use parsing\factories\factory_interfaces\ModelInterface;
-use parsing\ParserManager;
 
-class ZoonModel implements ModelInterface
-{
-    private $constInfo;
-    private $source;
-    private $maxDate;
+class ZoonModel implements ModelInterface {
+    const HALF_YEAR_TIMESTAMP = 15552000;
+
     private $sourceConfig;
+    private $sourceHash;
+    private $handled;
 
-    const HANDLED_TRUE = 'HANDLED';
-    const HANDLED_FALSE = 'NEW';
+    private $beforeHalfYearTimestamp;
+    private $maxDate = 0;
 
-    public function __construct()
-    {
-        $this->constInfo['platform'] = 'zoon';
-        $this->constInfo['rating'] = 11;
-        $this->constInfo['tonal'] = 'NEUTRAL';
-        $this->maxDate = 0;
+    private $constInfo = [
+        'platform' => 'zoon',
+        'rating' => 11,
+        'tonal' => 'NEUTRAL'
+    ];
+
+    public function __construct() {
+        $this->beforeHalfYearTimestamp = getdate()[0] - self::HALF_YEAR_TIMESTAMP;
     }
 
-    public function setConfig($source) : void
-    {
-        $this->source = $source;
+    public function setConfig($config) {
+        $this->handled = $config['handled'];
+        $this->sourceHash = $config['source_hash'];
 
-        $this->sourceConfig = json_decode($this->source['source_config'], true);
-
-        if (isset($this->sourceConfig['max_date'])) {
-            $this->maxDate = $this->sourceConfig['max_date'];
+        if ($this->handled === "HANDLED") {
+            $sourceConfig = json_decode($config['source_config'], true);
+            $this->maxDate = $sourceConfig['max_date'];
         }
-
-        $this->constInfo['source_hash_key'] = $this->source['source_hash'];
     }
 
-    public function writeData($records) : void
-    {
-        if (isset($records['count_reviews'])) {
-            $this->updateSourceReviewConfig($records);
+    public function writeData($records) {
+        if (isset($records['average_mark'])) {
+            $this->writeMetaRecord($records);
         } else {
             $this->writeReviews($records);
         }
     }
 
-    private function updateSourceReviewConfig($records) : void
-    {
-        $database = new DatabaseShell();
-
-        if ($this->source['handled'] === self::HANDLED_FALSE) {
-            $sourceMeta = [
-                'count_reviews' => $records['count_reviews'],
-                'average_mark' => $records['average_mark'],
-            ];
-
-            $sourceConfig = [
-                'max_date' => getdate()[0],
-                'old_hash' => $records['old_hash'],
-            ];
-
-            var_dump($sourceConfig);
-
-            $database->updateSourceReview($this->source['source_hash'], [
-                'source_meta_info' => json_encode($sourceMeta),
-                'source_config' => json_encode($sourceConfig),
-                'handled' => self::HANDLED_TRUE
-            ]);
-
-        } elseif ($this->source['handled'] === self::HANDLED_TRUE) {
-            $sourceMeta = [
-                'count_reviews' => $records['count_reviews'],
-                'average_mark'  => $records['average_mark'],
-            ];
-
-            $sourceConfig['max_date'] = $this->maxDate;
-
-            if (isset($records['old_hash'])) {
-                $sourceConfig['old_hash'] = $records['old_hash'];
-            } else {
-                $sourceConfig['old_hash'] = $this->sourceConfig['old_hash'];
-            }
-
-            var_dump($sourceConfig);
-
-            $database->updateSourceReview($this->source['source_hash'], [
-                'source_meta_info' => json_encode($sourceMeta),
-                'source_config' => json_encode($sourceConfig)
-            ]);
+    private function writeReviews($records) {
+        if ($this->handled === "NEW") {
+            $datePoint = $this->beforeHalfYearTimestamp;
+        } else {
+            $datePoint = $this->maxDate;
         }
-    }
 
-    private function writeReviews($records) : void
-    {
-        $database = new DatabaseShell();
+        $tempMaxDate = 0;
 
-        if ($this->source['handled'] === self::HANDLED_FALSE) {
-            $database->insertReviews($records, $this->constInfo);
+        foreach ($records as $record) {
+            if ($record['date'] > $datePoint) {
+                $result[] = $record;
 
-        } elseif ($this->source['handled'] === self::HANDLED_TRUE) {
-            $tempMaxDate = $this->maxDate;
-
-            foreach ($records as $record) {
-                if ($record['date'] > $this->maxDate) {
-                    $result[] = $record;
-
-                    if ($record['date'] > $tempMaxDate) {
-                        $tempMaxDate = $record['date'];
-                    }
+                if ($record['date'] > $tempMaxDate) {
+                    $tempMaxDate = $record['date'];
                 }
             }
+        }
 
-            $this->maxDate = $tempMaxDate;
+        $this->maxDate = $tempMaxDate;
 
-            if (isset($result)){
-                $database->insertReviews($result, $this->constInfo);
-            }
+        if (isset($result)) {
+            (new DatabaseShell())->insertReviews($result, $this->constInfo);
         }
     }
+
+    private function writeMetaRecord($records) {
+        $sourceMeta = [
+            'count_reviews' => $records['count_reviews'],
+            'average_mark' => $records['average_mark'],
+        ];
+
+        if ($this->maxDate != 0) {
+            $date = $this->maxDate;
+        } else {
+            $date = $this->sourceConfig['max_date'];
+        }
+
+        if (isset($records['hash'])) {
+            $hash = $records['hash'];
+        } else {
+            $hash = $this->sourceConfig['old_hash'];
+        }
+
+        if ($this->handled === "NEW") {
+            $this->handled = "HANDLED";
+        }
+
+        $sourceConfig = [
+            'max_date' => $date,
+            'old_hash' => $hash,
+        ];
+
+        (new DatabaseShell())->updateSourceReview($this->sourceHash, [
+            'source_meta_info' => json_encode($sourceMeta),
+            'source_config' => json_encode($sourceConfig),
+            'handled' => $this->handled,
+        ]);
+    }
+
 }
