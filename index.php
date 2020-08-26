@@ -4,11 +4,12 @@ require_once "vendor/autoload.php";
 require_once "autoloader.php";
 
 use parsing\DB\DatabaseShell;
+use parsing\ParserManager;
 use Workerman\Worker;
 use Workerman\Timer;
 
 
-//setSource(['https://volgograd.zoon.ru/restaurants/kapuchino_v_krasnooktyabrskom_rajone/']);
+setSource(['https://volgograd.zoon.ru/restaurants/kapuchino_v_krasnooktyabrskom_rajone/']);
 //loopGo();
 (new ParserManager())->parseSources();
 

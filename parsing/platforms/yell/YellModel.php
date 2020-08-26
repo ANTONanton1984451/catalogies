@@ -8,104 +8,102 @@ use parsing\factories\factory_interfaces\ModelInterface;
 
 class YellModel implements ModelInterface
 {
-    const HANDLED_TRUE = 'HANDLED';
-    const HANDLED_FALSE = 'NEW';
+    const HALF_YEAR_TIMESTAMP = 15552000;
 
-    private $sourceInfo;
-    private $constInfo;
+    private $sourceConfig;
+    private $sourceHash;
+    private $handled;
 
-    private $maxDate;
-    private $oldHash;
+    private $beforeHalfYearTimestamp;
+    private $maxDate = 0;
 
-    public function setConfig($config) : void
-    {
-        $this->sourceInfo = $config;
-        $this->constInfo = [
-            'platform' => 'yell',
-            'source_hash_key' => $this->sourceInfo['source_hash'],
-        ];
+    private $constInfo = [
+        'platform' => 'yell',
+    ];
 
-        if (isset($config['source_config'])) {
-            $this->maxDate = json_decode($config['source_config'])['max_date'];
-            $this->oldHash = json_decode($config['source_config'])['old_hash'];
+    public function __construct() {
+        $this->beforeHalfYearTimestamp = getdate()[0] - self::HALF_YEAR_TIMESTAMP;
+    }
+
+    public function setConfig($config) {
+        $this->handled = $config['handled'];
+        $this->sourceHash = $config['source_hash'];
+        $this->constInfo['source_hash_key'] = $config['source_hash'];
+
+        if ($this->handled === "HANDLED") {
+            $sourceConfig = json_decode($config['source_config'], true);
+            $this->maxDate = $sourceConfig['max_date'];
         }
     }
 
     public function writeData($records) : void
     {
         if (isset($records['average_mark'])) {
-            $this->updateSourceReview($records);
+            $this->writeMetaRecord($records);
         } else {
             $this->writeReviews($records);
         }
     }
 
-    private function writeReviews($records) : void
-    {
-        $database = new DatabaseShell();
-
-        if ($this->sourceInfo['handled'] === self::HANDLED_FALSE) {
-            // todo: Проверка на полгода
-            $database->insertReviews($records, $this->constInfo);
+    private function writeReviews($records) {
+        if ($this->handled === "NEW") {
+            $datePoint = $this->beforeHalfYearTimestamp;
+        } else {
+            $datePoint = $this->maxDate;
         }
 
-        if ($this->sourceInfo['handled'] === self::HANDLED_TRUE) {
-            $tempMaxDate = $this->maxDate;
+        $tempMaxDate = 0;
 
-            foreach ($records as $review) {
-                if ($review['date'] > $this->maxDate) {
-                    $result[] = $review;
+        foreach ($records as $record) {
+            if ($record['date'] > $datePoint) {
+                $result[] = $record;
 
-                    if ($review['date'] > $tempMaxDate) {
-                        $tempMaxDate = $review['date'];
-                    }
+                if ($record['date'] > $tempMaxDate) {
+                    $tempMaxDate = $record['date'];
                 }
             }
+        }
 
+        if ($tempMaxDate > $this->maxDate && $tempMaxDate != 0) {
             $this->maxDate = $tempMaxDate;
+        }
 
-            $database->insertReviews($result, $this->constInfo);
+        if (isset($result)) {
+            (new DatabaseShell())->insertReviews($result, $this->constInfo);
         }
     }
 
-    private function updateSourceReview($records) {
-        $database = new DatabaseShell();
+    private function writeMetaRecord($records) {
+        $sourceMeta = [
+            'count_reviews' => $records['count_reviews'],
+            'average_mark' => $records['average_mark'],
+        ];
 
-        if ($this->sourceInfo['handled'] === self::HANDLED_FALSE) {
-            $sourceMeta = [
-                'count_reviews' => $records['count_reviews'],
-                'average_mark' => $records['average_mark'],
-            ];
-
-            $sourceConfig = [
-                'max_date' => getdate()[0],
-                'old_hash' => $records['old_hash'],
-            ];
-
-            $database->updateSourceReview($this->sourceInfo['source_hash'], [
-                'source_meta_info' => json_encode($sourceMeta),
-                'source_config' => json_encode($sourceConfig),
-                'handled' => self::HANDLED_TRUE
-            ]);
-
-        } elseif ($this->sourceInfo['handled'] === self::HANDLED_TRUE) {
-            $sourceMeta = [
-                'count_reviews' => $records['count_reviews'],
-                'average_mark'  => $records['average_mark'],
-            ];
-
-            $sourceConfig['max_date'] = $this->maxDate;
-
-            if (isset($records['old_hash'])) {
-                $sourceConfig['old_hash'] = $records['old_hash'];
-            } else {
-                $sourceConfig['old_hash'] = $this->oldHash;
-            }
-
-            $database->updateSourceReview($this->sourceInfo['source_hash'], [
-                'source_meta_info' => json_encode($sourceMeta),
-                'source_config' => json_encode($sourceConfig)
-            ]);
+        if ($this->maxDate != 0) {
+            $date = $this->maxDate;
+        } else {
+            $date = $this->sourceConfig['max_date'];
         }
+
+        if (isset($records['hash'])) {
+            $hash = $records['hash'];
+        } else {
+            $hash = $this->sourceConfig['old_hash'];
+        }
+
+        if ($this->handled === "NEW") {
+            $this->handled = "HANDLED";
+        }
+
+        $sourceConfig = [
+            'max_date' => $date,
+            'old_hash' => $hash,
+        ];
+
+        (new DatabaseShell())->updateSourceReview($this->sourceHash, [
+            'source_meta_info' => json_encode($sourceMeta),
+            'source_config' => json_encode($sourceConfig),
+            'handled' => $this->handled,
+        ]);
     }
 }

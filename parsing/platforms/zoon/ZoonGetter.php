@@ -1,4 +1,7 @@
 <?php
+
+// todo: Проверить, проводиться ли сортировка
+
 namespace parsing\platforms\zoon;
 
 use parsing\factories\factory_interfaces\GetterInterface;

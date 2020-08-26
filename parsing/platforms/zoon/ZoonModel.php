@@ -1,5 +1,7 @@
 <?php
 
+// todo: Подумать над тем, чтобы выходить из цикла, если уже не появится новых отзывов
+
 namespace parsing\platforms\zoon;
 
 use parsing\DB\DatabaseShell;
@@ -18,7 +20,7 @@ class ZoonModel implements ModelInterface {
     private $constInfo = [
         'platform' => 'zoon',
         'rating' => 11,
-        'tonal' => 'NEUTRAL'
+        'tonal' => 'NEUTRAL',
     ];
 
     public function __construct() {
@@ -28,6 +30,7 @@ class ZoonModel implements ModelInterface {
     public function setConfig($config) {
         $this->handled = $config['handled'];
         $this->sourceHash = $config['source_hash'];
+        $this->constInfo['source_hash_key'] = $config['source_hash'];
 
         if ($this->handled === "HANDLED") {
             $sourceConfig = json_decode($config['source_config'], true);
@@ -62,7 +65,9 @@ class ZoonModel implements ModelInterface {
             }
         }
 
-        $this->maxDate = $tempMaxDate;
+        if ($tempMaxDate > $this->maxDate && $tempMaxDate != 0) {
+            $this->maxDate = $tempMaxDate;
+        }
 
         if (isset($result)) {
             (new DatabaseShell())->insertReviews($result, $this->constInfo);
