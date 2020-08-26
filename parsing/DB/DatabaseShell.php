@@ -81,6 +81,10 @@ class DatabaseShell
     {
         $this->database->insert('source_review', $source_review);
     }
+    public function insertTaskQueue(array $task):void
+    {
+        $this->database->insert("task_queue",$task);
+    }
 
     public function updateSourceReview($source_hash, $updatedRecords)
     {

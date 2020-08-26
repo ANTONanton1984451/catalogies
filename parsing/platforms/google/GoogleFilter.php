@@ -14,11 +14,11 @@ use parsing\platforms\Filter;
 class GoogleFilter implements FilterInterface
 {
 
+  const LAST_ITERATION = 'last_iteration';
   private $buffer_info;
   private $buffer_info_temp;
 
-//ToDo::добавить поле имени пользователя в таблицу review
-//Todo:поменять название в таблицу и соответственно метод в классе DB
+
     /**
      * @param array $data-данные,поступающие из буфера для обработки
      * @return array
@@ -34,10 +34,14 @@ class GoogleFilter implements FilterInterface
 
        $this->buffer_info_temp = $data;
 
-       $this->setMetaInfo();
-       $this->formReview();
 
-       $this->buffer_info['config'] = $this->buffer_info_temp['config'];
+       if($data['status'] === 'last_iteration'){
+           $this->setMetaInfo();
+           $this->buffer_info['status'] = self::LAST_ITERATION;
+       }else{
+           $this->formReview();
+           $this->buffer_info['config'] = $this->buffer_info_temp['config'];
+       }
 
        return $this->buffer_info;
   }
@@ -52,8 +56,8 @@ class GoogleFilter implements FilterInterface
   private function setMetaInfo():void
   {
       $this->buffer_info['meta_info'] = json_encode([
-                                          'total_rating'=>$this->buffer_info_temp['platform_info']['averageRating'],
-                                          'review_count'=>$this->buffer_info_temp['platform_info']['totalReviewCount']
+                                          'total_rating'=>$this->buffer_info_temp['averageRating'],
+                                          'review_count'=>$this->buffer_info_temp['totalReviewCount']
                                                     ]);
   }
 

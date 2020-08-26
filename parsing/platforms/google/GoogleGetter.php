@@ -16,7 +16,7 @@ class GoogleGetter  implements GetterInterface
     const PAGE_SIZE = '50';
     const HALF_YEAR = 15552000;
     const LAST_ITERATION = 'last_iteration';
-
+    const CONTINUE = 777;
 
     protected $source;
     protected $track;
@@ -25,11 +25,13 @@ class GoogleGetter  implements GetterInterface
     private $client;
     private $curl;
     private $halfYearAgo;
-    private $trigger;
+    private $trigger = self::CONTINUE;
     private $iterator = 0;
     private $nextPageToken = false;
     private $last_review_date;
     private $last_review_hash;
+
+    private $meta;
 
     private $config;
     private $mainData;
@@ -73,14 +75,22 @@ class GoogleGetter  implements GetterInterface
         $this->iterator++;
 
         if ($this->trigger == self::LAST_ITERATION) {
+
+                $this->mainData = $this->meta;
+                $this->mainData['status'] = self::LAST_ITERATION;
+                $this->trigger = self::END_CODE;
+
+        }elseif($this->trigger === self::END_CODE){
+
                 $this->mainData = self::END_CODE;
         }else{
                 $this->refreshToken();
                 $this->connectToPlatform();
+                $this->parseMeta();
                 $this->checkResponse();
         }
 
-        if($this->handle == 'NEW' && $this->mainData !== self::END_CODE){
+        if($this->handle == 'NEW' && $this->trigger === self::CONTINUE){
 
                 $this->setLastReviewConfig();
                 $this->cutToTime($this->halfYearAgo);
@@ -92,7 +102,7 @@ class GoogleGetter  implements GetterInterface
                }
 
 
-        }elseif($this->handle == 'HANDLED' && $this->mainData != self::END_CODE){
+        }elseif($this->handle == 'HANDLED' && $this->trigger === self::CONTINUE){
 
                 $lastReviewFromGMB = $this->arrayReviewsToMd5Hash();
 
@@ -245,12 +255,17 @@ class GoogleGetter  implements GetterInterface
      */
     private function arrayReviewsToMd5Hash():?string
     {
-        if($this->mainData !== self::END_CODE){
-
             $lastUpdateReview = $this->mainData['platform_info']['reviews'][0];
             $implode_array = implode($lastUpdateReview,'');
 
             return md5($implode_array);
-        }
+    }
+
+    private function parseMeta():void
+    {
+
+        $this->meta['averageRating'] = $this->mainData['platform_info']['averageRating'];
+        $this->meta['totalReviewCount'] = $this->mainData['platform_info']['totalReviewCount'];
+
     }
 }
