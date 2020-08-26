@@ -35,8 +35,9 @@ class DatabaseShell
 
         return $this->database->query("
             SELECT ($now -`last_parse_date`) + `review_per_day` as priority,
-                `task_queue`.`source_hash_key` as source,
+                `task_queue`.`source_hash_key` as hash,
                 `source_config` as config,
+                `source`
                 `track`,
                 `platform`
             FROM `task_queue`
@@ -59,6 +60,7 @@ class DatabaseShell
             'platform',
             'source_config',
             'track',
+            'source'
         ],
         [
             'handled' => 'NEW',
