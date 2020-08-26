@@ -58,7 +58,7 @@ class GoogleFilter implements FilterInterface
   }
 
     /**
-     * Формитарует отзывы к нормальному виду
+     * Формирует отзывы к нормальному виду
      */
   private function formReview():void
   {

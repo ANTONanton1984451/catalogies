@@ -56,7 +56,6 @@ class GoogleGetter  implements GetterInterface
 
     }
 
-
     /**
      *
      * Функция,которая вызывает все остальные методы,получает массив данных с GMB_API в необработанном виде
@@ -138,7 +137,7 @@ class GoogleGetter  implements GetterInterface
     {
         //todo::декодировать конфиги
         $this->source = $config['source'];
-        $this->handle = $config['handle'];
+        $this->handle = $config['handled'];
         $this->mainData['config'] = $config['config'];
 
         if(@isset($config['config']['last_review_date'])){

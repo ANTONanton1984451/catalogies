@@ -5,4 +5,5 @@ require_once "vendor\autoload.php";
 use parsing\logger\LoggerManager;
 
 LoggerManager::init();
-LoggerManager::log(LoggerManager::DEBUG,'test',['data'=>'test']);
+
+(new \parsing\ParserManager())->parseSources();
