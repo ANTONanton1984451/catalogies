@@ -65,6 +65,7 @@ class GoogleModel implements ModelInterface
             $this->dataBase->insertTaskQueue(array_merge($coefficients,["source_hash_key"=>$this->constInfo['source_hash_key']]));
             //todo::Сделать обновление в source_review
             //todo::Сделать метод для записи в очередь
+            //todo::Сделать сервич расчёта коэфициентов
         }else{
             $this->tempReviews = $data['reviews'];
             $this->reviewCount += count($data['reviews']);
@@ -98,9 +99,11 @@ class GoogleModel implements ModelInterface
         ];
     }
 
-    private function insertReviews(array $reviews):void
+    private function insertReviews(?array $reviews):void
     {
-        $this->dataBase->insertReviews($reviews,$this->constInfo);
+        if(!empty($reviews)){
+            $this->dataBase->insertReviews($reviews,$this->constInfo);
+        }
     }
 
     private function updateMetaInfo(string $meta):void

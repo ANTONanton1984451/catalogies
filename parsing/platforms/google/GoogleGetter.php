@@ -146,12 +146,13 @@ class GoogleGetter  implements GetterInterface
     public function setConfig($config)
     {
         //todo::декодировать конфиги
+        $decode_config = json_decode($config['config'],true);
         $this->source = $config['source'];
         $this->handle = $config['handled'];
-        $this->mainData['config'] = $config['config'];
+        $this->mainData['config'] = $decode_config;
 
-        if(@isset($config['config']['last_review_date'])){
-            $this->last_review_db = $config['config']['last_review_date'];
+        if(@isset($decode_config['last_review_date'])){
+            $this->last_review_db = $decode_config['last_review_date'];
         }
 
     }

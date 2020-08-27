@@ -6,11 +6,7 @@ use parsing\logger\LoggerManager;
 
 LoggerManager::init();
 
-//(new \parsing\ParserManager())->parseSources();
+(new \parsing\ParserManager())->parseSources();
 
-$dbShell = new \parsing\DB\DatabaseShell();
 
-$res = $dbShell->getActualSources(1,["'google'"]);
-
-var_dump($res);
 
