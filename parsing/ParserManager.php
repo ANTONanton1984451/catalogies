@@ -8,11 +8,16 @@ use parsing\DB\DatabaseShell;
 
 class ParserManager
 {
+//    const NEW_WORKER = 0;
+//    const HIGH_PRIORITY_WORKER = 1;
+//    const LOW_PRIORITY_WORKER = 2;
+
+    private $worker;
     private $sources;
 
-    public function __construct()
+    public function __construct($worker)
     {
-        $this->sources = $this->getActualSources();
+        $this->sources = $this->getActualSources($worker);
     }
 
     public function parseSources()
@@ -33,7 +38,7 @@ class ParserManager
 
         return 'success';
     }
-    private function getActualSources()
+    private function getActualSources($worker)
     {
 //        return (new DatabaseShell())->getActualSources(1, ["'yell'"]);
         return (new DatabaseShell())->getNewSources(1);
