@@ -64,6 +64,7 @@ function setCoefficient(array &$res, int $time): void
  * @param Medoo $db
  * @param int $offset
  * @param int $limit
+ *
  * @return array
  */
 function getReviews(Medoo $db, int $offset, int $limit): array

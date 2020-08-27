@@ -60,10 +60,11 @@ class DatabaseShell
             'platform',
             'source_config',
             'track',
-            'source'
+            'source',
+            'handled'
         ],
         [
-            'handled' => 'NEW',
+//            'handled' => 'NEW',
             "LIMIT" => $limit
         ]);
 }
@@ -116,5 +117,4 @@ class DatabaseShell
             ]
         ]);
     }
-
 }

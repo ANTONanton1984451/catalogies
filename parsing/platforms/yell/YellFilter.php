@@ -35,6 +35,10 @@ class YellFilter implements FilterInterface
             }
         }
 
+        if (isset($raw_data['average_mark'])){
+            $records = $raw_data;
+        }
+
         return $records;
     }
 
