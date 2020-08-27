@@ -24,12 +24,9 @@ class GoogleGetter  implements GetterInterface
 
     private $trigger = self::CONTINUE;
     private $client;
-    private $curl;
     private $halfYearAgo;
     private $iterator = 0;
     private $nextPageToken = false;
-    private $last_review_date;
-    private $last_review_hash;
 
     private $meta;
 
@@ -75,14 +72,13 @@ class GoogleGetter  implements GetterInterface
         $this->iterator++;
 
         if ($this->trigger == self::LAST_ITERATION) {
-
                 $this->mainData = $this->meta;
                 $this->mainData['status'] = self::LAST_ITERATION;
                 $this->trigger = self::END_CODE;
 
         }elseif($this->trigger === self::END_CODE){
-
                 $this->mainData = self::END_CODE;
+
         }else{
                 $this->refreshToken();
                 $this->connectToPlatform();
@@ -91,23 +87,22 @@ class GoogleGetter  implements GetterInterface
         }
 
         if($this->handle == 'NEW' && $this->trigger === self::CONTINUE){
-
+            // todo: Можно вынести в отдельный метод
                 $this->setLastReviewConfig();
                 $this->cutToTime($this->halfYearAgo);
                 $this->checkMainData();
 
         }elseif($this->handle == 'HANDLED' && $this->trigger === self::CONTINUE){
 
-                $lastReviewFromGMB = $this->arrayReviewsToMd5Hash();
+                $lastReviewFromSource = $this->arrayReviewsToMd5Hash();
 
-                if($lastReviewFromGMB === $this->config['last_review_hash']){
+                if($lastReviewFromSource === $this->config['last_review_hash']){
                     $this->mainData = self::END_CODE;
                 }else{
                     $this->setLastReviewConfig();
                     $this->cutToTime($this->last_review_db);
                     $this->checkMainData();
                 }
-
         }
 
         return $this->mainData;
@@ -120,23 +115,19 @@ class GoogleGetter  implements GetterInterface
     private function checkResponse():void
     {
         if(empty($this->mainData['platform_info']['reviews'])){
-
             $this->mainData = self::END_CODE;
 
         }elseif (!empty($this->mainData['platform_info']['nextPageToken'])){
-
             $this->nextPageToken = $this->mainData['platform_info']['nextPageToken'];
 
         }else{
-
             $this->trigger = self::LAST_ITERATION;
-
         }
     }
 
 
-    private function checkMainData():void
-    {
+    private function checkMainData():void {
+        // todo: status влияет на работу model, и создает сильную связь
         if(empty($this->mainData['platform_info']['reviews'])){
             $this->mainData = [];
             $this->mainData = $this->meta;
@@ -157,6 +148,7 @@ class GoogleGetter  implements GetterInterface
         $this->handle = $config['handled'];
         $this->mainData['config'] = $decode_config;
 
+        // todo: Проверка по handled полю
         if(@isset($decode_config['last_review_date'])){
             $this->last_review_db = $decode_config['last_review_date'];
         }
@@ -178,17 +170,15 @@ class GoogleGetter  implements GetterInterface
     {
         if($this->iterator === 1){
             $lastReview = $this->mainData['platform_info']['reviews'][0];
-            $this->last_review_hash = $this->arrayReviewsToMd5Hash();
-            $this->last_review_date = strtotime($lastReview['updateTime']);
 
-            $this->mainData['config']['last_review_date'] = $this->last_review_date;
-            $this->mainData['config']['last_review_hash'] = $this->last_review_hash;
+            $this->mainData['config']['last_review_date'] = strtotime($lastReview['updateTime']);
+            $this->mainData['config']['last_review_hash'] = $this->arrayReviewsToMd5Hash();
         }
     }
 
 
     /**
-     * Обновляет токен и перезаписвает конфиги,записывая туда обновлённый токен токен
+     * Обновляет токен и перезаписвает конфиги,записывая туда обновлённый токен
      */
     private function refreshToken():void
     {
@@ -196,10 +186,8 @@ class GoogleGetter  implements GetterInterface
         $this->client->setAccessToken($this->mainData['config']['token_info']);
 
         if($this->client->isAccessTokenExpired()){
-
             $refreshToken = $this->client->getRefreshToken();
             $this->mainData['config']['token_info'] = $this->client->fetchAccessTokenWithRefreshToken($refreshToken);
-
         }
     }
 
@@ -216,9 +204,7 @@ class GoogleGetter  implements GetterInterface
 
                 $timeStamp=strtotime($data[$i]['updateTime']);
 
-                if($timeStamp > $timeBreak ){
-                    continue;
-                }else{
+                if(!$timeStamp > $timeBreak ){
                     $data=array_slice($data,0,$i);
                     $this->trigger = self::LAST_ITERATION;
                     $this->mainData['platform_info']['reviews'] = $data;
@@ -235,23 +221,23 @@ class GoogleGetter  implements GetterInterface
      */
     private function connectToPlatform():void
     {
-        if(!$this->nextPageToken){
-            $request_url = self::URL.$this->source.'/reviews?pageSize='.self::PAGE_SIZE;
-        }else{
-            $request_url = self::URL.$this->source.'/reviews?pageSize='.self::PAGE_SIZE.'&pageToken='.$this->nextPageToken;
+        $request_url = self::URL.$this->source.'/reviews?pageSize='.self::PAGE_SIZE;
+
+        if($this->nextPageToken){
+            $request_url = $request_url .'&pageToken=' . $this->nextPageToken;
         }
 
-        $this->curl = curl_init($request_url);
+        $curl = curl_init($request_url);
 
         $token_type = $this->mainData['config']['token_info']['token_type'];
         $access_token = $this->mainData['config']['token_info']['access_token'];
 
         $header_str = 'Authorization: '.$token_type.' '.$access_token;
 
-        curl_setopt($this->curl,CURLOPT_HTTPHEADER,[$header_str]);
-        curl_setopt($this->curl,CURLOPT_RETURNTRANSFER,true);
+        curl_setopt($curl,CURLOPT_HTTPHEADER,[$header_str]);
+        curl_setopt($curl,CURLOPT_RETURNTRANSFER,true);
 
-        $response = curl_exec($this->curl);
+        $response = curl_exec($curl);
 
         $this->mainData['platform_info'] = json_decode($response,true);
     }

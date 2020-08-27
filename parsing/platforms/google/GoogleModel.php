@@ -25,6 +25,7 @@ class GoogleModel implements ModelInterface
     public function __construct(DatabaseShell $dbShell)
     {
         $this->dataBase = $dbShell;
+        // todo: Можно constInfo в одном месте записывать
         $this->constInfo['platform'] = 'google';
     }
 
@@ -51,8 +52,8 @@ class GoogleModel implements ModelInterface
             $this->updateMetaInfo($data['meta_info']);
             $parse_date_hours = round(time()/self::ONE_HOUR_SEC);
             $this->dataBase->updateTaskQueue(['last_parse_date'=>$parse_date_hours],["source_hash_key"=>$this->constInfo['source_hash_key']]);
-        }else{
 
+        }else{
             $this->insertReviews($data['reviews']);
             $this->updateConfig($data['config']);
         }
@@ -68,6 +69,7 @@ class GoogleModel implements ModelInterface
             //todo::Сделать обновление в source_review
             //todo::Сделать метод для записи в очередь
             //todo::Сделать сервич расчёта коэфициентов
+
         }else{
             $this->tempReviews = $data['reviews'];
             $this->reviewCount += count($data['reviews']);
