@@ -22,10 +22,10 @@ class GoogleGetter  implements GetterInterface
     protected $track;
     protected $handle;
 
+    private $trigger = self::CONTINUE;
     private $client;
     private $curl;
     private $halfYearAgo;
-    private $trigger = self::CONTINUE;
     private $iterator = 0;
     private $nextPageToken = false;
     private $last_review_date;
@@ -94,13 +94,7 @@ class GoogleGetter  implements GetterInterface
 
                 $this->setLastReviewConfig();
                 $this->cutToTime($this->halfYearAgo);
-
-                $cuttedData = $this->mainData['platform_info']['reviews'];
-
-               if(empty($cuttedData)){
-                    $this->mainData = self::END_CODE;
-               }
-
+                $this->checkMainData();
 
         }elseif($this->handle == 'HANDLED' && $this->trigger === self::CONTINUE){
 
@@ -111,6 +105,7 @@ class GoogleGetter  implements GetterInterface
                 }else{
                     $this->setLastReviewConfig();
                     $this->cutToTime($this->last_review_db);
+                    $this->checkMainData();
                 }
 
         }
@@ -139,14 +134,25 @@ class GoogleGetter  implements GetterInterface
         }
     }
 
+
+    private function checkMainData():void
+    {
+        if(empty($this->mainData['platform_info']['reviews'])){
+            $this->mainData = [];
+            $this->mainData = $this->meta;
+            $this->mainData['status'] = self::LAST_ITERATION;
+            $this->trigger = self::END_CODE;
+        }
+    }
+
     /**
      * @param $config
-     * Небольшое дополнение метода родительского класса,не влияющее на работу всех классов
+     * Парсинг коннфигов:выставление $handled,$source и конфигов ссылки
      */
     public function setConfig($config)
     {
-        //todo::декодировать конфиги
         $decode_config = json_decode($config['config'],true);
+
         $this->source = $config['source'];
         $this->handle = $config['handled'];
         $this->mainData['config'] = $decode_config;
@@ -264,9 +270,7 @@ class GoogleGetter  implements GetterInterface
 
     private function parseMeta():void
     {
-
         $this->meta['averageRating'] = $this->mainData['platform_info']['averageRating'];
         $this->meta['totalReviewCount'] = $this->mainData['platform_info']['totalReviewCount'];
-
     }
 }

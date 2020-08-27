@@ -13,7 +13,7 @@ class GoogleModel implements ModelInterface
     const HANDLED = 'HANDLED';
     const NEW = 'NEW';
     const ONE_DAY_IN_SEC = 86400;
-    const ONE_HOUR_SER = 3600;
+    const ONE_HOUR_SEC = 3600;
     const BALANCE_COEFFICIENT = 4;
 
     private $dataBase;
@@ -49,6 +49,8 @@ class GoogleModel implements ModelInterface
     {
         if($data['status'] === self::LAST_ITERATION){
             $this->updateMetaInfo($data['meta_info']);
+            $parse_date_hours = round(time()/self::ONE_HOUR_SEC);
+            $this->dataBase->updateTaskQueue(['last_parse_date'=>$parse_date_hours],["source_hash_key"=>$this->constInfo['source_hash_key']]);
         }else{
 
             $this->insertReviews($data['reviews']);
@@ -91,7 +93,7 @@ class GoogleModel implements ModelInterface
         } else {
             $review_per_day = round($review_per_day) * self::BALANCE_COEFFICIENT;
         }
-        $last_parse_date = round(time()/self::ONE_HOUR_SER);
+        $last_parse_date = round(time()/self::ONE_HOUR_SEC);
         $a = 0;
         return [
             'last_parse_date'=>$last_parse_date,

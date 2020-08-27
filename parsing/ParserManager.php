@@ -36,7 +36,7 @@ class ParserManager
     }
     private function getActualSources()
     {
-        return (new DatabaseShell())->getNewSources(1);
+        return (new DatabaseShell())->getActualSources(1,["'google'"]);
 //        return (new DatabaseShell())->getActualSourceReviews();
     }
 }
