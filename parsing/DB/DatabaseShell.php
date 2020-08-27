@@ -19,6 +19,15 @@ class DatabaseShell
         $this->database = $this->getConnection();
     }
 
+    public function getSources(int $limit , string $handled_flag , array $platforms = []):array
+    {
+        if($handled_flag === 'NEW'){
+            return $this->getNewSources($limit);
+        }elseif ($handled_flag === 'HANDLED'){
+            return $this->getActualSources($limit,$platforms);
+        }
+    }
+
     /**
      * @param int $limit
      * @param array $platforms
@@ -37,7 +46,8 @@ class DatabaseShell
             SELECT ($now -`last_parse_date`) + `review_per_day` as priority,
                 `task_queue`.`source_hash_key` as hash,
                 `source_config` as config,
-                `source`
+                `handled` as handled,   
+                `source` as source,
                 `track`,
                 `platform`
             FROM `task_queue`
@@ -58,13 +68,15 @@ class DatabaseShell
         return $this->database->select('source_review', [
             'source_hash',
             'platform',
-            'source_config',
             'track',
             'source',
-            'handled'
+            'handled',
+            'source_config(config)'
         ],
         [
-//            'handled' => 'NEW',
+            'handled' => 'NEW',
+            'actual'=>'ACTIVE',
+
             "LIMIT" => $limit
         ]);
 }
@@ -81,6 +93,10 @@ class DatabaseShell
     public function insertSourceReview(array $source_review)
     {
         $this->database->insert('source_review', $source_review);
+    }
+    public function insertTaskQueue(array $task):void
+    {
+        $this->database->insert("task_queue",$task);
     }
 
     public function updateSourceReview($source_hash, $updatedRecords)
@@ -110,8 +126,8 @@ class DatabaseShell
             'database_type' => 'mysql',
             'database_name' => 'test',
             'server' => 'localhost',
-            'username' => 'borland',
-            'password' => 'attache1974',
+            'username' => 'root',
+            'password' => '',
             'option' => [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
             ]

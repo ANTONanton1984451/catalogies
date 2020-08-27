@@ -40,7 +40,9 @@ class ParserManager
     }
     private function getActualSources($worker)
     {
+
 //        return (new DatabaseShell())->getActualSources(1, ["'yell'"]);
         return (new DatabaseShell())->getNewSources(1);
+
     }
 }

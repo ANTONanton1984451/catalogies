@@ -19,11 +19,11 @@ class TopDealersModel implements ModelInterface
     }
 
 
-    public function writeData($reviews)
+    public function writeData($data)
     {
-        $this->insertReviews($reviews['reviews']);
-        $this->updateConfig($reviews['config']);
-        $this->updateMetaInfo($reviews['meta_info']);
+        $this->insertReviews($data['reviews']);
+        $this->updateConfig($data['config']);
+        $this->updateMetaInfo($data['meta_info']);
     }
 
 

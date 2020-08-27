@@ -45,6 +45,7 @@ class Parser
             }
             $buffer = $this->filter->clearData($buffer);
             $this->model->writeData($buffer);
+            $a = 0 ;
         }
 
         echo "It's ready {$this->config['source']} \n";
