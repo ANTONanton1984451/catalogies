@@ -44,7 +44,7 @@ class DatabaseShell
 
         return $this->database->query("
             SELECT ($now -`last_parse_date`) + `review_per_day` as priority,
-                `task_queue`.`source_hash_key` as hash,
+                `task_queue`.`source_hash_key` as source_hash,
                 `source_config` as config,
                 `handled` as handled,   
                 `source` as source,
@@ -97,6 +97,11 @@ class DatabaseShell
     public function insertTaskQueue(array $task):void
     {
         $this->database->insert("task_queue",$task);
+    }
+
+    public function updateTaskQueue(array $data , array $where):void
+    {
+        $this->database->update('task_queue',$data,$where);
     }
 
     public function updateSourceReview($source_hash, $updatedRecords)

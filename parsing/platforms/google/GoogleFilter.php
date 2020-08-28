@@ -13,7 +13,6 @@ use parsing\platforms\Filter;
  */
 class GoogleFilter implements FilterInterface
 {
-
   const LAST_ITERATION = 'last_iteration';
   private $buffer_info;
   private $buffer_info_temp;
@@ -28,19 +27,21 @@ class GoogleFilter implements FilterInterface
      */
   public function clearData($data):array
   {
-
        $this->buffer_info      = [];
-       $this->buffer_info_temp = [];
-
        $this->buffer_info_temp = $data;
 
+       if(empty($data['platform_info']['reviews'])){
 
-       if($data['status'] === 'last_iteration'){
-           $this->setMetaInfo();
-           $this->buffer_info['status'] = self::LAST_ITERATION;
+          $this->buffer_info['meta'] = [
+                                        'rating'=>     $data['platform_info']['averageRating'],
+                                        'reviewCount'=>     $data['platform_info']['totalReviewCount']
+                                       ];
+
        }else{
+
            $this->formReview();
            $this->buffer_info['config'] = $this->buffer_info_temp['config'];
+
        }
 
        return $this->buffer_info;
@@ -50,16 +51,8 @@ class GoogleFilter implements FilterInterface
       // TODO: Implement setConfig() method.
   }
 
-    /**
-     * Перенос мета-информации из буферного хранилища в основное
-     */
-  private function setMetaInfo():void
-  {
-      $this->buffer_info['meta_info'] = json_encode([
-                                          'total_rating'=>$this->buffer_info_temp['averageRating'],
-                                          'review_count'=>$this->buffer_info_temp['totalReviewCount']
-                                                    ]);
-  }
+
+
 
     /**
      * Формирует отзывы к нормальному виду
@@ -70,18 +63,19 @@ class GoogleFilter implements FilterInterface
 
           $ratingInt                 = $this->enumToInt($v['starRating']);
 
-          $oneReview['identifier']   = json_encode(['identifier'=>$v['reviewId'],'name'=>$v['reviewer']['displayName']]);
-          $oneReview['rating']       = $ratingInt;
-          $oneReview['date']         = strtotime($v['updateTime']);
-          $oneReview['tonal']        = $this->intToTonal($ratingInt);
+          $review['identifier']   = json_encode(['identifier'=>$v['reviewId'],'name'=>$v['reviewer']['displayName']]);
+          $review['rating']       = $ratingInt;
+          $review['date']         = strtotime($v['updateTime']);
+          $review['tonal']        = $this->ratingToTonal($ratingInt);
 
+          // todo: Зачем перезаписывать?
           if(isset($v['comment'])){
-              $oneReview['text'] = $this->splitText($v['comment']);
+              $review['text'] = $this->splitText($v['comment']);
           }else{
-              $oneReview['text'] = '';
+              $review['text'] = '';
           }
 
-          $this->buffer_info['reviews'][] = $oneReview;
+          $this->buffer_info['reviews'][] = $review;
       }
 
   }
@@ -96,20 +90,16 @@ class GoogleFilter implements FilterInterface
       switch ($rating){
           case 'FIVE':
               return 5;
-              break;
           case 'FOUR':
               return 4;
-              break;
           case 'THREE':
               return 3;
-              break;
           case 'TWO':
               return 2;
-              break;
           case 'ONE':
               return 1;
-              break;
           default:
+              // todo: Не забыть что-нибудь сделать с -1 в rating'e
               return -1;
       }
   }
@@ -120,7 +110,7 @@ class GoogleFilter implements FilterInterface
      * @return string
      * Основываясь на диапозоне оценок,переводит числовой параметр оценки в тональность
      */
-  private function intToTonal(int $rating):string
+  private function ratingToTonal(int $rating):string
   {
       if($rating > 0 && $rating < 4 ){
           return 'NEGATIVE';
