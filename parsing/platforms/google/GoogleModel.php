@@ -9,30 +9,30 @@ use parsing\factories\factory_interfaces\ModelInterface;
 
 class GoogleModel implements ModelInterface
 {
-    const LAST_ITERATION = 'last_iteration';
     const HANDLED = 'HANDLED';
     const NEW = 'NEW';
     const ONE_DAY_IN_SEC = 86400;
     const ONE_HOUR_SEC = 3600;
     const BALANCE_COEFFICIENT = 4;
+    const PLATFORM = 'google';
 
     private $dataBase;
-    private $constInfo;
     private $handled;
     private $tempReviews;
     private $reviewCount = 0;
+    private $source_hash;
 
     public function __construct(DatabaseShell $dbShell)
     {
         $this->dataBase = $dbShell;
-        $this->constInfo['platform'] = 'google';
+
     }
 
     public function writeData($data)
     {
        if($this->handled === self::NEW){
            $this->writeNewData($data);
-       }else{
+       }elseif($this->handled === self::HANDLED){
            $this->writeHandledData($data);
        }
 
@@ -41,38 +41,42 @@ class GoogleModel implements ModelInterface
 
     public function setConfig($config)
     {
-        $this->constInfo['source_hash_key'] = $config['source_hash'];
+        $this->source_hash = $config['source_hash'];
         $this->handled = $config['handled'];
     }
 
     private function writeHandledData(array $data):void
     {
-        if($data['status'] === self::LAST_ITERATION){
-            $this->updateMetaInfo($data['meta_info']);
-            $parse_date_hours = round(time()/self::ONE_HOUR_SEC);
-            $this->dataBase->updateTaskQueue(['last_parse_date'=>$parse_date_hours],["source_hash_key"=>$this->constInfo['source_hash_key']]);
-        }else{
 
+        if(!empty($data['reviews'])){
             $this->insertReviews($data['reviews']);
             $this->updateConfig($data['config']);
+        }else{
+            $columns = ['source_meta_info'=>json_encode($data['meta'])];
+            $this->dataBase->updateSourceReview($this->source_hash,$columns);
+            $parse_date_hours = round(time()/self::ONE_HOUR_SEC);
+            $this->dataBase->updateTaskQueue($this->source_hash,['last_parse_date'=>$parse_date_hours]);
         }
     }
 
     private function writeNewData(array $data):void
     {
-        if($data['status'] === self::LAST_ITERATION){
-            $this->updateMetaInfo($data['meta_info']);
-            $this->dataBase->updateSourceReview($this->constInfo['source_hash_key'],['handled'=>'HANDLED']);
-            $coefficients = $this->calcCoefs();
-            $this->dataBase->insertTaskQueue(array_merge($coefficients,["source_hash_key"=>$this->constInfo['source_hash_key']]));
-            //todo::Сделать обновление в source_review
-            //todo::Сделать метод для записи в очередь
-            //todo::Сделать сервич расчёта коэфициентов
-        }else{
-            $this->tempReviews = $data['reviews'];
+        if(!empty($data['reviews'])){
+            $this->tempReviews = $data['reviews'];//????
             $this->reviewCount += count($data['reviews']);
             $this->insertReviews($data['reviews']);
             $this->updateConfig($data['config']);
+
+        }else{
+            $columns = [
+                    'source_meta_info' => json_encode($data['meta']),
+                    'handled'=> self::HANDLED
+                    ];
+            $this->dataBase->updateSourceReview($this->source_hash,$columns);
+            $coefficients = $this->calcCoefs();
+            $this->dataBase->insertTaskQueue(array_merge($coefficients,["source_hash_key"=>$this->source_hash]));
+
+            //todo::Сделать сервис расчёта коэфициентов
         }
     }
 
@@ -102,28 +106,22 @@ class GoogleModel implements ModelInterface
         ];
     }
 
-    private function insertReviews(?array $reviews):void
+    private function insertReviews(array $reviews):void
     {
-        if(!empty($reviews)){
-            $this->dataBase->insertReviews($reviews,$this->constInfo);
-        }
-    }
+        $constInfo = [
+                        'source_hash_key'=>$this->source_hash,
+                        'platform'=>self::PLATFORM
+                     ];
 
-    private function updateMetaInfo(string $meta):void
-    {
-        $this->dataBase->updateSourceReview(
-                                            $this->constInfo['source_hash_key'],
-                                            ['source_meta_info'=>$meta]
-                                            );
+        $this->dataBase->insertReviews($reviews,$constInfo);
     }
-
 
     private function updateConfig(array $config):void
     {
         $config = json_encode($config);
-        $this->dataBase->updateSourceReview(
-                                            $this->constInfo['source_hash_key'],
-                                            ['source_config'=>$config]
-                                            );
+        $this->dataBase->updateSourceReview($this->source_hash,['source_config'=>$config]);
+
+
+
     }
 }

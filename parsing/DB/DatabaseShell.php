@@ -94,7 +94,9 @@ class DatabaseShell
         $this->database->insert('source_review', $source_review);
     }
 
-    public function updateSourceReview($source_hash, $updatedRecords) {
+    public function updateSourceReview($source_hash, $updatedRecords)
+    {
+
         $this->database->update("source_review", $updatedRecords, ["source_hash" => $source_hash]);
     }
 

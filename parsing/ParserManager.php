@@ -61,6 +61,7 @@ class ParserManager {
                 return (new DatabaseShell())
                     ->getSources(self::SOURCES_LIMIT, "NEW");
 
+
             case self::HIGH_PRIORITY_WORKER:
                 return (new DatabaseShell())
                     ->getSources(self::SOURCES_LIMIT, "HANDLED", self::HIGH_PRIORITY_PLATFORMS);
@@ -72,5 +73,6 @@ class ParserManager {
             default:
                 throw new Exception('Unknown worker');
         }
+
     }
 }
