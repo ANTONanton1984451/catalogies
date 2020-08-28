@@ -15,22 +15,17 @@ class GoogleGetter  implements GetterInterface
     const URL = 'https://mybusiness.googleapis.com/v4/';
     const PAGE_SIZE = '50';
     const HALF_YEAR = 15552000;
-    const LAST_ITERATION = 'last_iteration';
     const CONTINUE = 777;
 
     protected $source;
-    protected $track;
+    protected $track;//maybe deleted?
     protected $handle;
 
     private $trigger = self::CONTINUE;
     private $client;
     private $halfYearAgo;
     private $iterator = 0;
-    private $nextPageToken = false;
 
-    private $meta;
-
-    private $config;
     private $mainData;
 
     /**
@@ -58,8 +53,8 @@ class GoogleGetter  implements GetterInterface
     /**
      *
      * Функция,которая вызывает все остальные методы,получает массив данных с GMB_API в необработанном виде
-     * При обнаружении отсутсвия отзывов или того,что уже совершилась последняя итерация,сразу же возвращает массив
-     * с триггером,сообщающем о конце работы цикла.
+     * При обнаружении отсутсвия отзывов или того,что уже совершилась последняя итерация,сразу же возвращает
+     * триггер,сообщающий о конце работы цикла.
      * При первичной обработке происходит получение всех отзывов за последние пол-года.
      * При вторичной обработке происходит сверка хэшей конфига и первого отзыва,
      * полученного в момент выполнения через GMB_API.
@@ -71,67 +66,54 @@ class GoogleGetter  implements GetterInterface
     {
         $this->iterator++;
 
-        if ($this->trigger == self::LAST_ITERATION) {
-                $this->mainData = $this->meta;
-                $this->mainData['status'] = self::LAST_ITERATION;
-                $this->trigger = self::END_CODE;
-
-        }elseif($this->trigger === self::END_CODE){
-                $this->mainData = self::END_CODE;
-
+        if ($this->trigger === self::END_CODE) {
+               $this->mainData = self::END_CODE;
         }else{
                 $this->refreshToken();
                 $this->connectToPlatform();
-                $this->parseMeta();
                 $this->checkResponse();
         }
 
-        if($this->handle == 'NEW' && $this->trigger === self::CONTINUE){
-            // todo: Можно вынести в отдельный метод
-                $this->setLastReviewConfig();
-                $this->cutToTime($this->halfYearAgo);
-                $this->checkMainData();
+        if($this->handle === self::HANDLED_FALSE && $this->trigger === self::CONTINUE){
+            $this->formData($this->halfYearAgo);
 
-        }elseif($this->handle == 'HANDLED' && $this->trigger === self::CONTINUE){
+        }elseif($this->handle == self::HANDLED_TRUE && $this->trigger === self::CONTINUE){
+            $lastReviewFromSource = $this->arrayReviewToMd5Hash();
 
-                $lastReviewFromSource = $this->arrayReviewsToMd5Hash();
-
-                if($lastReviewFromSource === $this->config['last_review_hash']){
-                    $this->mainData = self::END_CODE;
-                }else{
-                    $this->setLastReviewConfig();
-                    $this->cutToTime($this->last_review_db);
-                    $this->checkMainData();
-                }
+            if($lastReviewFromSource === $this->mainData['config']['last_review_hash']){
+                $this->mainData['platform_info']['reviews'] = [];
+                $this->trigger = self::END_CODE;
+            }else{
+                $this->formData($this->last_review_db);
+            }
         }
 
         return $this->mainData;
     }
 
+
+    private function formData(int $timeToCut):void
+    {
+        if($this->iterator === 1){
+            $this->setLastReviewConfig();
+        }
+        $this->cutToTime($timeToCut);
+        $this->checkMainData();
+    }
     /**
      * Метод проверяет ответ от GMB_API.
      * В случае,если нет отзывов,то мы оставляем сообщение о конце работы
      */
     private function checkResponse():void
     {
-        if(empty($this->mainData['platform_info']['reviews'])){
-            $this->mainData = self::END_CODE;
-
-        }elseif (!empty($this->mainData['platform_info']['nextPageToken'])){
-            $this->nextPageToken = $this->mainData['platform_info']['nextPageToken'];
-
-        }else{
-            $this->trigger = self::LAST_ITERATION;
+        if (empty($this->mainData['platform_info']['reviews'])){
+            $this->trigger = self::END_CODE;
         }
     }
 
 
     private function checkMainData():void {
-        // todo: status влияет на работу model, и создает сильную связь
         if(empty($this->mainData['platform_info']['reviews'])){
-            $this->mainData = [];
-            $this->mainData = $this->meta;
-            $this->mainData['status'] = self::LAST_ITERATION;
             $this->trigger = self::END_CODE;
         }
     }
@@ -148,8 +130,7 @@ class GoogleGetter  implements GetterInterface
         $this->handle = $config['handled'];
         $this->mainData['config'] = $decode_config;
 
-        // todo: Проверка по handled полю
-        if(@isset($decode_config['last_review_date'])){
+        if($this->handle === self::HANDLED_TRUE){
             $this->last_review_db = $decode_config['last_review_date'];
         }
 
@@ -168,12 +149,9 @@ class GoogleGetter  implements GetterInterface
      */
     private function setLastReviewConfig():void
     {
-        if($this->iterator === 1){
             $lastReview = $this->mainData['platform_info']['reviews'][0];
-
             $this->mainData['config']['last_review_date'] = strtotime($lastReview['updateTime']);
-            $this->mainData['config']['last_review_hash'] = $this->arrayReviewsToMd5Hash();
-        }
+            $this->mainData['config']['last_review_hash'] = $this->arrayReviewToMd5Hash();
     }
 
 
@@ -200,17 +178,16 @@ class GoogleGetter  implements GetterInterface
     {
         $data = $this->mainData['platform_info']['reviews'];
 
-            for($i=0;$i<count($data);$i++){
+        for($i=0;$i<count($data)-1;$i++){
 
-                $timeStamp=strtotime($data[$i]['updateTime']);
+            $timeStamp=strtotime($data[$i]['updateTime']);
 
-                if(!$timeStamp > $timeBreak ){
-                    $data=array_slice($data,0,$i);
-                    $this->trigger = self::LAST_ITERATION;
-                    $this->mainData['platform_info']['reviews'] = $data;
-                    return;
-                }
+            if($timeStamp <= $timeBreak ){
+                $data=array_slice($data,0,$i);
+                $this->mainData['platform_info']['reviews'] = $data;
+                return;
             }
+        }
     }
 
     /**
@@ -223,8 +200,8 @@ class GoogleGetter  implements GetterInterface
     {
         $request_url = self::URL.$this->source.'/reviews?pageSize='.self::PAGE_SIZE;
 
-        if($this->nextPageToken){
-            $request_url = $request_url .'&pageToken=' . $this->nextPageToken;
+        if(!empty($this->mainData['platform_info']['nextPageToken'])){
+            $request_url = $request_url .'&pageToken=' . $this->mainData['platform_info']['nextPageToken'];
         }
 
         $curl = curl_init($request_url);
@@ -246,17 +223,11 @@ class GoogleGetter  implements GetterInterface
      * @return string
      * Переводит массив в хэш строку
      */
-    private function arrayReviewsToMd5Hash():?string
+    private function arrayReviewToMd5Hash(): string
     {
             $lastUpdateReview = $this->mainData['platform_info']['reviews'][0];
             $implode_array = implode($lastUpdateReview,'');
-
             return md5($implode_array);
     }
 
-    private function parseMeta():void
-    {
-        $this->meta['averageRating'] = $this->mainData['platform_info']['averageRating'];
-        $this->meta['totalReviewCount'] = $this->mainData['platform_info']['totalReviewCount'];
-    }
 }

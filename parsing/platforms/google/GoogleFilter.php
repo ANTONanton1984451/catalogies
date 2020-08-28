@@ -30,12 +30,18 @@ class GoogleFilter implements FilterInterface
        $this->buffer_info      = [];
        $this->buffer_info_temp = $data;
 
-       if($data['status'] === self::LAST_ITERATION){
-           $this->setMetaInfo();
-           $this->buffer_info['status'] = self::LAST_ITERATION;
+       if(empty($data['platform_info']['reviews'])){
+
+          $this->buffer_info['meta'] = [
+                                        'rating'=>     $data['platform_info']['averageRating'],
+                                        'reviewCount'=>     $data['platform_info']['totalReviewCount']
+                                       ];
+
        }else{
+
            $this->formReview();
            $this->buffer_info['config'] = $this->buffer_info_temp['config'];
+
        }
 
        return $this->buffer_info;
@@ -45,16 +51,8 @@ class GoogleFilter implements FilterInterface
       // TODO: Implement setConfig() method.
   }
 
-    /**
-     * Перенос мета-информации из буферного хранилища в основное
-     */
-  private function setMetaInfo():void
-  {
-      $this->buffer_info['meta_info'] = json_encode([
-                                          'total_rating'=>$this->buffer_info_temp['averageRating'],
-                                          'review_count'=>$this->buffer_info_temp['totalReviewCount']
-                                                    ]);
-  }
+
+
 
     /**
      * Формирует отзывы к нормальному виду
