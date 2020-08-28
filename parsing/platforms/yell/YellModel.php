@@ -16,6 +16,8 @@ class YellModel implements ModelInterface
 
     private $beforeHalfYearTimestamp;
     private $maxDate = 0;
+    private $minDate = 0;
+    private $countReviews = 0;
 
     private $constInfo = [
         'platform' => 'yell',
@@ -31,7 +33,7 @@ class YellModel implements ModelInterface
         $this->constInfo['source_hash_key'] = $config['source_hash'];
 
         if ($this->handled === "HANDLED") {
-            $sourceConfig = json_decode($config['source_config'], true);
+            $sourceConfig = json_decode($config['config'], true);
             $this->maxDate = $sourceConfig['max_date'];
         }
     }
@@ -40,6 +42,7 @@ class YellModel implements ModelInterface
     {
         if (isset($records['average_mark'])) {
             $this->writeMetaRecord($records);
+            $this->writeTaskQueue();
         } else {
             $this->writeReviews($records);
         }
@@ -57,9 +60,14 @@ class YellModel implements ModelInterface
         foreach ($records as $record) {
             if ($record['date'] > $datePoint) {
                 $result[] = $record;
+                $this->countReviews++;
 
                 if ($record['date'] > $tempMaxDate) {
                     $tempMaxDate = $record['date'];
+                }
+
+                if ($record['date'] < $this->minDate) {
+                    $this->minDate = $record['date'];
                 }
             }
         }
@@ -105,5 +113,29 @@ class YellModel implements ModelInterface
             'source_config' => json_encode($sourceConfig),
             'handled' => $this->handled,
         ]);
+    }
+
+    private function writeTaskQueue(){
+        if ($this->handled === "NEW") {
+            $reviewPerDay = $this->countReviews / ((time() - $this->minDate) / 86400);
+
+            if ($reviewPerDay > 6) {
+                $reviewPerDay = 6 * 4;
+            } elseif ($reviewPerDay < 1) {
+                $reviewPerDay = 1 * 4;
+            } else {
+                $reviewPerDay = round($reviewPerDay) * 4;
+            }
+
+            (new DatabaseShell())->insertTaskQueue([
+                'source_hash_key' => $this->sourceHash,
+                'last_parse_date' => time() / 3600,
+                'review_per_day' => $reviewPerDay,
+            ]);
+        } else {
+            (new DatabaseShell())->updateTaskQueue($this->sourceHash, [
+                'last_parse_date' => time() / 3600
+            ]);
+        }
     }
 }

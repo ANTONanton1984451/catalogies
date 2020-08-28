@@ -162,17 +162,17 @@ class MigrationsManager
 
     public function seedDatabase() {
         $sources = [
-            'https://volgograd.zoon.ru/restaurants/restoran-bar_velvet/',
-            'https://volgograd.zoon.ru/restaurants/kapuchino_v_krasnooktyabrskom_rajone/',
-            'https://volgograd.zoon.ru/beauty/salon_krasoty_style_na_ulitse_karla_marksa/',
-            'https://volgograd.zoon.ru/trainings/detskij_klub_akademiya_geniev_na_ulitse_mira/',
+            'https://www.yell.ru/spb/com/restoran-stroganoff-steak-house-na-admiraltejskoj_11890813/',
+            'https://www.yell.ru/spb/com/rossiya-sankt-peterburg-ulitsakolomenskaya29-restoran-philibert-nakolomenskojulitse_9765413/',
+            'https://volgograd.zoon.ru/restaurants/sushi-bar_kapuchino_tokio_v_krasnooktyabrskom_rajone/',
+            'https://volgograd.zoon.ru/restaurants/kafe_3_sushi_na_ulitse_karbysheva/',
         ];
 
         foreach ($sources as $source) {
             $db = new DatabaseShell();
             $db->insertSourceReview([
                 'source_hash' => md5($source),
-                'platform' => 'zoon',
+                'platform' => 'yell',
                 'source' => $source,
                 'actual' => 'ACTIVE',
                 'track' => 'ALL',

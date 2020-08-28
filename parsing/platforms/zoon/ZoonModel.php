@@ -1,5 +1,8 @@
 <?php
 
+// todo: Прикрутить транзакции
+// todo: Возвращать PDO_STATEMENT в
+
 namespace parsing\platforms\zoon;
 
 use parsing\DB\DatabaseShell;
