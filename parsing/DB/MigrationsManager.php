@@ -167,7 +167,34 @@ class MigrationsManager
             'https://volgograd.zoon.ru/beauty/salon_krasoty_style_na_ulitse_karla_marksa/',
             'https://volgograd.zoon.ru/trainings/detskij_klub_akademiya_geniev_na_ulitse_mira/',
         ];
-
+        $sources_google = [
+            [
+                'source'=>'accounts/101148201288830043360/locations/5839617167530752762',
+                'config'=>[
+                    'token_info'=>[
+                          'access_token' =>  'ya29.a0AfH6SMClm14SrVXboygJiAhw9IckyEg5pYsCE64YMLsq30RbxQSoJtUcTHtI9GsiTQD6rCAWjwoXQdJ1E-vZ8GNAi5IhVXCHGQn14xQpcFhYbeeribO4GZVctAp9p7YwZEZugc1zftYmUB9gzGAojDIwKJspZbFZquc',
+                          'expires_in' =>  3599,
+                          'refresh_token' => '1//0civO_apGzWFeCgYIARAAGAwSNwF-L9Ir01TiziSGGG33fFDsSFaPwffgvsjwetQhqAYpwjmKMjJs-RPuxOR9UwP9PU61nfZmDvc',
+                          'scope' =>  'https://www.googleapis.com/auth/business.manage',
+                          'token_type' => 'Bearer',
+                          'created' => 1598615609
+                    ]
+                ]
+            ],
+            [
+                'source'=>'accounts/101148201288830043360/locations/2321278413977180698',
+                'config'=>[
+                    'token_info'=>[
+                        'access_token' =>  'ya29.a0AfH6SMClm14SrVXboygJiAhw9IckyEg5pYsCE64YMLsq30RbxQSoJtUcTHtI9GsiTQD6rCAWjwoXQdJ1E-vZ8GNAi5IhVXCHGQn14xQpcFhYbeeribO4GZVctAp9p7YwZEZugc1zftYmUB9gzGAojDIwKJspZbFZquc',
+                        'expires_in' =>  3599,
+                        'refresh_token' => '1//0civO_apGzWFeCgYIARAAGAwSNwF-L9Ir01TiziSGGG33fFDsSFaPwffgvsjwetQhqAYpwjmKMjJs-RPuxOR9UwP9PU61nfZmDvc',
+                        'scope' =>  'https://www.googleapis.com/auth/business.manage',
+                        'token_type' => 'Bearer',
+                        'created' => 1598615609
+                    ]
+                ]
+            ]
+        ];
         foreach ($sources as $source) {
             $db = new DatabaseShell();
             $db->insertSourceReview([
@@ -177,6 +204,19 @@ class MigrationsManager
                 'actual' => 'ACTIVE',
                 'track' => 'ALL',
                 'handled' => 'NEW'
+            ]);
+        }
+
+        foreach ($sources_google as $source){
+            $db = new DatabaseShell();
+            $db->insertSourceReview([
+                'source_hash' => md5($source['source']),
+                'platform' => 'google',
+                'source' => $source['source'],
+                'actual' => 'ACTIVE',
+                'track' => 'ALL',
+                'handled' => 'NEW',
+                'source_config'=>json_encode($source['config'])
             ]);
         }
     }
