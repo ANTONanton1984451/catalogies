@@ -16,6 +16,7 @@ class GoogleGetter  implements GetterInterface
     const PAGE_SIZE = '50';
     const HALF_YEAR = 15552000;
     const CONTINUE = 777;
+    const LAST_ITERATION = 'last_iteration';
 
     protected $source;
     protected $track;//maybe deleted?
@@ -68,6 +69,9 @@ class GoogleGetter  implements GetterInterface
 
         if ($this->trigger === self::END_CODE) {
                $this->mainData = self::END_CODE;
+        }elseif($this->trigger === self::LAST_ITERATION){
+            $this->mainData['platform_info']['reviews'] = [];
+            $this->trigger = self::END_CODE;
         }else{
                 $this->refreshToken();
                 $this->connectToPlatform();
@@ -115,6 +119,9 @@ class GoogleGetter  implements GetterInterface
     private function checkMainData():void {
         if(empty($this->mainData['platform_info']['reviews'])){
             $this->trigger = self::END_CODE;
+        }
+        if(empty($this->mainData['platform_info']['nextPageToken'])){
+            $this->trigger = self::LAST_ITERATION;
         }
     }
 
