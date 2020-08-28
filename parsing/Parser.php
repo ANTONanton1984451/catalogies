@@ -24,8 +24,7 @@ class Parser
 
     private $notifies = [];
 
-    public function __construct($config)
-    {
+    public function __construct($config) {
         $this->config = $config;
     }
 
@@ -45,7 +44,6 @@ class Parser
             }
             $buffer = $this->filter->clearData($buffer);
             $this->model->writeData($buffer);
-            $a = 0 ;
         }
 
         echo "It's ready {$this->config['source']} \n";

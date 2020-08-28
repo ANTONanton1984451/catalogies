@@ -46,8 +46,7 @@ class MigrationsManager
         }
     }
 
-    private function createTable($name)
-    {
+    private function createTable($name) {
 
         switch ($name) {
             case self::SOURCE_REVIEW:
@@ -162,17 +161,24 @@ class MigrationsManager
     }
 
     public function seedDatabase() {
-        $links = [
+        $sources = [
             'https://volgograd.zoon.ru/restaurants/restoran-bar_velvet/',
             'https://volgograd.zoon.ru/restaurants/kapuchino_v_krasnooktyabrskom_rajone/',
             'https://volgograd.zoon.ru/beauty/salon_krasoty_style_na_ulitse_karla_marksa/',
             'https://volgograd.zoon.ru/trainings/detskij_klub_akademiya_geniev_na_ulitse_mira/',
-            'https://www.yell.ru/spb/com/rossiya-sankt-peterburg-ulitsakolomenskaya29-restoran-philibert-nakolomenskojulitse_9765413/',
-            'https://www.yell.ru/spb/com/restoran-baku-na-sadovoj-ulice_11958638/',
-            'https://www.yell.ru/spb/com/antikafe-poltavskaya-7-na-metro-ploshchad-vosstaniya_11886901/',
-            'https://topdealers.ru/brands/bmw/moskva/2201/',
-            'https://topdealers.ru/brands/renault/belgorod/1425/',
         ];
+
+        foreach ($sources as $source) {
+            $db = new DatabaseShell();
+            $db->insertSourceReview([
+                'source_hash' => md5($source),
+                'platform' => 'zoon',
+                'source' => $source,
+                'actual' => 'ACTIVE',
+                'track' => 'ALL',
+                'handled' => 'NEW'
+            ]);
+        }
     }
 
     private function getConnection()

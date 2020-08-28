@@ -35,8 +35,11 @@ class ZoonGetter implements GetterInterface {
 
     public function setConfig($config) {
         $this->handled = $config['handled'];
-        $this->sourceConfig = json_decode($config['source_config'], true);
         $this->metaRecord = $this->generateMetaRecord($config['source']);
+
+        if ($this->handled === self::HANDLED_TRUE) {
+            $this->sourceConfig = json_decode($config["config"], true);
+        }
     }
 
     public function getNextRecords(){

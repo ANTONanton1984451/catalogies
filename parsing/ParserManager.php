@@ -22,18 +22,19 @@ class ParserManager {
         "'yell'"
     ];
 
-    const SOURCES_LIMIT = 5;
+    const SOURCES_LIMIT = 1;
 
     private $worker;
     private $sources = [];
 
     public function __construct($worker) {
+        $this->worker = $worker;
         $this->sources = $this->getActualSources($worker);
     }
 
     public function parseSources() {
-        if (array_count_values($this->sources) == 0) {
-            echo "empty_sources";
+        if (count($this->sources) == 0) {
+            echo "Worker #$this->worker: empty_sources \n";
             return "empty_sources";
         }
 
@@ -51,7 +52,7 @@ class ParserManager {
             $parser->parseSource();
         }
 
-        echo 'success';
+        echo "Worker #$this->worker: Success parsing \n";
         return 'success';
     }
     private function getActualSources($worker) {

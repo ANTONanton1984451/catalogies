@@ -93,6 +93,7 @@ class GoogleModel implements ModelInterface
         } else {
             $review_per_day = round($review_per_day) * self::BALANCE_COEFFICIENT;
         }
+
         $last_parse_date = round(time()/self::ONE_HOUR_SEC);
         $a = 0;
         return [
