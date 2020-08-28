@@ -130,8 +130,8 @@ class DatabaseShell
             'database_type' => 'mysql',
             'database_name' => 'test',
             'server' => 'localhost',
-            'username' => 'root',
-            'password' => '',
+            'username' => 'borland',
+            'password' => 'attache1974',
             'option' => [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
             ]

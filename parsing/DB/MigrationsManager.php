@@ -162,8 +162,6 @@ class MigrationsManager
 
     public function seedDatabase() {
         $sources = [
-            'https://www.yell.ru/spb/com/restoran-stroganoff-steak-house-na-admiraltejskoj_11890813/',
-            'https://www.yell.ru/spb/com/rossiya-sankt-peterburg-ulitsakolomenskaya29-restoran-philibert-nakolomenskojulitse_9765413/',
             'https://volgograd.zoon.ru/restaurants/sushi-bar_kapuchino_tokio_v_krasnooktyabrskom_rajone/',
             'https://volgograd.zoon.ru/restaurants/kafe_3_sushi_na_ulitse_karbysheva/',
         ];
@@ -199,7 +197,7 @@ class MigrationsManager
             $db = new DatabaseShell();
             $db->insertSourceReview([
                 'source_hash' => md5($source),
-                'platform' => 'yell',
+                'platform' => 'zoon',
                 'source' => $source,
                 'actual' => 'ACTIVE',
                 'track' => 'ALL',
@@ -227,8 +225,8 @@ class MigrationsManager
             'database_type' => 'mysql',
             'database_name' => 'test',
             'server' => 'localhost',
-            'username' => 'root',
-            'password' => '',
+            'username' => 'borland',
+            'password' => 'attache1974',
             'option' => [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
             ]

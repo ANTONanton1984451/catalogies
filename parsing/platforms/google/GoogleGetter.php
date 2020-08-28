@@ -44,7 +44,7 @@ class GoogleGetter  implements GetterInterface
     {
         $this->client = $client;
 
-        $client->setAuthConfig(__DIR__.'\secret.json');
+        $client->setAuthConfig(__DIR__.'/secret.json');
 
         $this->halfYearAgo=time()-self::HALF_YEAR;
 
