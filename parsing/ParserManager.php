@@ -8,10 +8,6 @@ use parsing\DB\DatabaseShell;
 
 class ParserManager {
 
-    const NEW_WORKER = 0;
-    const HIGH_PRIORITY_WORKER = 1;
-    const LOW_PRIORITY_WORKER = 2;
-
     const HIGH_PRIORITY_PLATFORMS = [
         "'google'",
         "'zoon'"
@@ -57,16 +53,16 @@ class ParserManager {
     }
     private function getActualSources($worker) {
         switch ($worker) {
-            case self::NEW_WORKER:
+            case NEW_WORKER:
                 return (new DatabaseShell())
                     ->getSources(self::SOURCES_LIMIT, "NEW");
 
 
-            case self::HIGH_PRIORITY_WORKER:
+            case HIGH_PRIORITY_WORKER:
                 return (new DatabaseShell())
                     ->getSources(self::SOURCES_LIMIT, "HANDLED", self::HIGH_PRIORITY_PLATFORMS);
 
-            case self::LOW_PRIORITY_WORKER:
+            case LOW_PRIORITY_WORKER:
                 return (new DatabaseShell())
                     ->getSources(self::SOURCES_LIMIT, "HANDLED", self::LOW_PRIORITY_PLATFORMS);
 
