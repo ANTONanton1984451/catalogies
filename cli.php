@@ -25,6 +25,12 @@ if (isset($argv[1])) {
             echo "Drop Tables is ready \n";
             break;
 
+        case 'seedDB':
+            $controller->seedDatabase();
+            echo "Seed Database is ready \n";
+            break;
+
+
         default:
             echo "Unknown command \n";
     }

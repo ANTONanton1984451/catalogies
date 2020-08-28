@@ -47,6 +47,7 @@ class GoogleModel implements ModelInterface
 
     private function writeHandledData(array $data):void
     {
+
         if(!empty($data['reviews'])){
             $this->insertReviews($data['reviews']);
             $this->updateConfig($data['config']);
@@ -54,7 +55,7 @@ class GoogleModel implements ModelInterface
             $columns = ['source_meta_info'=>json_encode($data['meta'])];
             $this->dataBase->updateSourceReview($this->source_hash,$columns);
             $parse_date_hours = round(time()/self::ONE_HOUR_SEC);
-            $this->dataBase->updateTaskQueue(['last_parse_date'=>$parse_date_hours],["source_hash_key"=>$this->source_hash]);
+            $this->dataBase->updateTaskQueue($this->source_hash,['last_parse_date'=>$parse_date_hours]);
         }
     }
 
@@ -96,6 +97,7 @@ class GoogleModel implements ModelInterface
         } else {
             $review_per_day = round($review_per_day) * self::BALANCE_COEFFICIENT;
         }
+
         $last_parse_date = round(time()/self::ONE_HOUR_SEC);
         $a = 0;
         return [

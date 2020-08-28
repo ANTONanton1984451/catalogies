@@ -90,28 +90,27 @@ class DatabaseShell
     }
 
     // Work with Source Review
-    public function insertSourceReview(array $source_review)
-    {
+    public function insertSourceReview(array $source_review) {
         $this->database->insert('source_review', $source_review);
-    }
-    public function insertTaskQueue(array $task):void
-    {
-        $this->database->insert("task_queue",$task);
-    }
-
-    public function updateTaskQueue(array $data , array $where):void
-    {
-        $this->database->update('task_queue',$data,$where);
     }
 
     public function updateSourceReview($source_hash, $updatedRecords)
     {
+
         $this->database->update("source_review", $updatedRecords, ["source_hash" => $source_hash]);
     }
 
-    public function getSourceReview($source_hash)
-    {
+    public function getSourceReview($source_hash) {
         $this->database->select("source_review", "*", ["source_hash" => $source_hash]);
+    }
+
+    // Work with Task Queue
+    public function insertTaskQueue(array $task) : void {
+        $this->database->insert("task_queue", $task);
+    }
+
+    public function updateTaskQueue($source_hash_key, array $task) : void {
+        $this->database->update("task_queue", $task, ["source_hash_key" => $source_hash_key] );
     }
 
     private function calcPriorityDates(): array
@@ -131,8 +130,8 @@ class DatabaseShell
             'database_type' => 'mysql',
             'database_name' => 'test',
             'server' => 'localhost',
-            'username' => 'root',
-            'password' => '',
+            'username' => 'borland',
+            'password' => 'attache1974',
             'option' => [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
             ]
