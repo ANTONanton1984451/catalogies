@@ -5,6 +5,7 @@ namespace parsing\platforms\yell;
 
 use parsing\DB\DatabaseShell;
 use parsing\factories\factory_interfaces\ModelInterface;
+use parsing\services\TaskQueueController;
 
 class YellModel implements ModelInterface
 {
@@ -115,27 +116,11 @@ class YellModel implements ModelInterface
         ]);
     }
 
-    private function writeTaskQueue(){
+    private function writeTaskQueue() {
         if ($this->handled === "NEW") {
-            $reviewPerDay = $this->countReviews / ((time() - $this->minDate) / 86400);
-
-            if ($reviewPerDay > 6) {
-                $reviewPerDay = 6 * 4;
-            } elseif ($reviewPerDay < 1) {
-                $reviewPerDay = 1 * 4;
-            } else {
-                $reviewPerDay = round($reviewPerDay) * 4;
-            }
-
-            (new DatabaseShell())->insertTaskQueue([
-                'source_hash_key' => $this->sourceHash,
-                'last_parse_date' => time() / 3600,
-                'review_per_day' => $reviewPerDay,
-            ]);
+            (new TaskQueueController())->insertTaskQueue($this->countReviews, $this->minDate, $this->sourceHash);
         } else {
-            (new DatabaseShell())->updateTaskQueue($this->sourceHash, [
-                'last_parse_date' => time() / 3600
-            ]);
+            (new TaskQueueController())->updateTaskQueue($this->sourceHash);
         }
     }
 }
