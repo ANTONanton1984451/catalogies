@@ -1,8 +1,4 @@
 <?php
-require_once "autoloader.php";
-require_once "vendor\autoload.php";
-
-
 
 require_once "vendor/autoload.php";
 require_once "autoloader.php";
@@ -41,7 +37,7 @@ function loopGo()
     $newSourcesWorker->count = 1;
 
     $newSourcesWorker->onWorkerStart = function ($newSourcesWorker) {
-        $timeInterval = 80;
+        $timeInterval = 20;
         $timerId = Timer::add($timeInterval, function () {
             (new ParserManager(NEW_WORKER))->parseSources();
         });
@@ -52,7 +48,7 @@ function loopGo()
     $highPriorityWorker->count = 1;
 
     $highPriorityWorker->onWorkerStart = function ($highPriorityWorker) {
-        $timeInterval = 80;
+        $timeInterval = 20;
         $timerId = Timer::add($timeInterval, function () {
             (new ParserManager(HIGH_PRIORITY_WORKER))->parseSources();
         });
@@ -63,7 +59,7 @@ function loopGo()
     $lowPriorityWorker->count = 180;
 
     $lowPriorityWorker->onWorkerStart = function ($lowPriorityWorker) {
-        $timeInterval = 50;
+        $timeInterval = 20;
         $timerId = Timer::add($timeInterval, function () {
             (new ParserManager(LOW_PRIORITY_WORKER))->parseSources();
         });

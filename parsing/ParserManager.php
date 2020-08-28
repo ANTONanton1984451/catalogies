@@ -6,22 +6,37 @@ use Exception;
 use parsing\factories\ParserFactory;
 use parsing\DB\DatabaseShell;
 
-class ParserManager
-{
-//    const NEW_WORKER = 0;
-//    const HIGH_PRIORITY_WORKER = 1;
-//    const LOW_PRIORITY_WORKER = 2;
+class ParserManager {
+
+    const NEW_WORKER = 0;
+    const HIGH_PRIORITY_WORKER = 1;
+    const LOW_PRIORITY_WORKER = 2;
+
+    const HIGH_PRIORITY_PLATFORMS = [
+        "'google'",
+        "'zoon'"
+    ];
+
+    const LOW_PRIORITY_PLATFORMS = [
+        "'topdealers'",
+        "'yell'"
+    ];
+
+    const SOURCES_LIMIT = 5;
 
     private $worker;
-    private $sources;
+    private $sources = [];
 
-    public function __construct($worker)
-    {
+    public function __construct($worker) {
         $this->sources = $this->getActualSources($worker);
     }
 
-    public function parseSources()
-    {
+    public function parseSources() {
+        if (array_count_values($this->sources) == 0) {
+            echo "empty_sources";
+            return "empty_sources";
+        }
+
         foreach ($this->sources as $source) {
             try {
                 $parser_factory = (new ParserFactory())->getFactory($source['platform']);
@@ -36,13 +51,25 @@ class ParserManager
             $parser->parseSource();
         }
 
+        echo 'success';
         return 'success';
     }
-    private function getActualSources($worker)
-    {
+    private function getActualSources($worker) {
+        switch ($worker) {
+            case self::NEW_WORKER:
+                return (new DatabaseShell())
+                    ->getSources(self::SOURCES_LIMIT, "NEW");
 
-//        return (new DatabaseShell())->getActualSources(1, ["'yell'"]);
-        return (new DatabaseShell())->getNewSources(1);
+            case self::HIGH_PRIORITY_WORKER:
+                return (new DatabaseShell())
+                    ->getSources(self::SOURCES_LIMIT, "HANDLED", self::HIGH_PRIORITY_PLATFORMS);
 
+            case self::LOW_PRIORITY_WORKER:
+                return (new DatabaseShell())
+                    ->getSources(self::SOURCES_LIMIT, "HANDLED", self::LOW_PRIORITY_PLATFORMS);
+
+            default:
+                throw new Exception('Unknown worker');
+        }
     }
 }
