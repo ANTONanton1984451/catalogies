@@ -2,8 +2,6 @@
 
 namespace parsing\logger;
 
-
-
 use Monolog\Formatter\LineFormatter;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;

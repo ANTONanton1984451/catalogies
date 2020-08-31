@@ -1,5 +1,4 @@
 <?php
-// todo: Сделать проверку, и найти гарантированный способ доставать id сайта
 
 namespace parsing\platforms\yell;
 

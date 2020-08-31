@@ -1,5 +1,4 @@
 <?php
-// todo: Прописать логику хранения конфига в записи source_review
 
 namespace parsing\platforms\yell;
 

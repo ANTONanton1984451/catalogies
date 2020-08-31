@@ -1,5 +1,4 @@
 <?php
-// todo: Если это метаинформация, ее нужно пропускать
 
 namespace parsing\platforms\yell;
 

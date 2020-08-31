@@ -6,7 +6,7 @@ use parsing\DB\DatabaseShell;
 
 class TaskQueueController
 {
-    public function insertTaskQueue($countReviews, $minimalDate, $sourceHash) {
+    public function insertTaskQueue(int $countReviews, int $minimalDate, string $sourceHash) {
         $reviewPerDay = $countReviews / ((time() - $minimalDate) / 86400);
 
         if ($reviewPerDay > 6) {
@@ -24,7 +24,7 @@ class TaskQueueController
         ]);
     }
 
-    public function updateTaskQueue($sourceHash) {
+    public function updateTaskQueue(int $sourceHash) {
         (new DatabaseShell())->updateTaskQueue($sourceHash, [
             'last_parse_date' => time() / 3600
         ]);

@@ -13,7 +13,13 @@ class ZoonFilter implements FilterInterface
 
     private $format;
 
-    public function clearData($buffer): array
+    /**
+     * Функция обрабатывает записи с отзывами, а записи с мета-данными пропускает дальше.
+     *
+     * @param $buffer array|object
+     * @return array
+     */
+    public function clearData($buffer) : array
     {
         if (is_object($buffer)) {
             $buffer = $this->handlingReviews($buffer);
@@ -22,7 +28,13 @@ class ZoonFilter implements FilterInterface
         return $buffer;
     }
 
-    private function handlingReviews($buffer): array
+    /**
+     * Функция определяет порядок обработки отзывов, в зависимости от их формата.
+     *
+     * @param $buffer object
+     * @return array
+     */
+    private function handlingReviews(object $buffer) : array
     {
         $document = phpQuery::newDocument($buffer->list);
         $this->checkFormat($document);
@@ -50,6 +62,11 @@ class ZoonFilter implements FilterInterface
         return $buffer;
     }
 
+    /**
+     * Определяет есть ли в записи отзывов зашифрованные отзывы, и занимают ли они весь массив, либо его часть.
+     *
+     * @param $document
+     */
     private function checkFormat($document): void
     {
         if ($document->find('.comment-container.js-comment-container')->text() === '') {
@@ -61,6 +78,12 @@ class ZoonFilter implements FilterInterface
         }
     }
 
+    /**
+     * Расшифровывает отзывы, и собирает из результата готовый документ.
+     *
+     * @param $document
+     * @return string
+     */
     private function handleHardReview($document): string
     {
         $result = '';
@@ -80,6 +103,12 @@ class ZoonFilter implements FilterInterface
         return $result;
     }
 
+    /**
+     * Находит зашифрованные отзывы, расшифровывает, и собирает вместе с обычными отзывами в единый документ.
+     *
+     * @param $document
+     * @return string
+     */
     private function handleMixReview($document): string
     {
         $result = '';
@@ -94,6 +123,13 @@ class ZoonFilter implements FilterInterface
         return $result;
     }
 
+    /**
+     * Функция из готового документа с отзывами в нормальном формате,
+     *   формирует записи по каждому отзыву, для дальнейшей записи.
+     *
+     * @param $document
+     * @return array
+     */
     private function handleSimpleReview($document): array
     {
         $document->find('ul')->remove();
@@ -127,7 +163,11 @@ class ZoonFilter implements FilterInterface
         return $result;
     }
 
-    private function formatDate($date)
+    /**
+     * @param $date string
+     * @return false|int
+     */
+    private function formatDate(string $date)
     {
         $split_date = preg_split("/\s+/", $date);
         $split_date[2] = $this->swapMonthFormat($split_date[2]);
@@ -137,7 +177,11 @@ class ZoonFilter implements FilterInterface
         return strtotime(implode($result, '-'));
     }
 
-    private function swapMonthFormat($month)
+    /**
+     * @param $month string
+     * @return string
+     */
+    private function swapMonthFormat(string $month)
     {
         switch ($month) {
             case 'января':
@@ -179,6 +223,4 @@ class ZoonFilter implements FilterInterface
         }
         return $month;
     }
-
-    public function setConfig($config){}
 }

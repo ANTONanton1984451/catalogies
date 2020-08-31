@@ -42,30 +42,25 @@ class Parser
                 $this->status = self::MESSAGE_END;
                 continue;
             }
+
             $buffer = $this->filter->clearData($buffer);
             $this->model->writeData($buffer);
         }
-
-        echo "It's ready {$this->config['source']} \n";
     }
 
-    public function setGetter(GetterInterface $getter): void
-    {
+    public function setGetter(GetterInterface $getter): void {
         $this->getter = $getter;
     }
 
-    public function setFilter(FilterInterface $filter): void
-    {
+    public function setFilter(FilterInterface $filter): void {
         $this->filter = $filter;
     }
 
-    public function setModel(ModelInterface $model): void
-    {
+    public function setModel(ModelInterface $model): void {
         $this->model = $model;
     }
 
-    public function generateJsonMessage()
-    {
+    public function generateJsonMessage() {
         return json_encode($this->notifies);
     }
 }

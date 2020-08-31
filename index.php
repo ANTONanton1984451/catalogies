@@ -4,16 +4,21 @@ require_once "vendor/autoload.php";
 require_once "autoloader.php";
 
 use parsing\ParserManager;
+use parsing\logger\LoggerManager;
 use Workerman\Worker;
 use Workerman\Timer;
+
+ini_set('error_reporting', E_ALL);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
 
 define("NEW_WORKER", 0);
 define("HIGH_PRIORITY_WORKER", 1);
 define("LOW_PRIORITY_WORKER", 2);
 
+LoggerManager::init();
 
 loopGo();
-
 
 function loopGo()
 {
