@@ -32,7 +32,6 @@ class Parser
     public function parseSource()
     {
         $this->getter->setConfig($this->config);
-        $this->filter->setConfig($this->config);
         $this->model->setConfig($this->config);
 
         while ($this->status != self::MESSAGE_END) {

@@ -2,10 +2,7 @@
 
 namespace parsing\platforms\zoon;
 
-use parsing\DB\DatabaseShell;
 use parsing\factories\factory_interfaces\GetterInterface;
-use parsing\logger\LoggerManager;
-use Exception;
 use phpQuery;
 
 class ZoonGetter implements GetterInterface {
@@ -38,12 +35,11 @@ class ZoonGetter implements GetterInterface {
      * Данная функция выполняется после инициализации объекта, и задает значения для полей, а также
      * вызывает генерацию мета-данных о ссылке (кол-во отзывов, общая оценка организации-заведения).
      *
-     * @param $config array
+     * @param $config
      */
+
+    // todo: Если в записи $config не хватает данных для обработки - exception, logger
     public function setConfig($config) {
-
-        // todo: Если в записи $config не хватает данных для обработки - exception, logger
-
         $this->handled = $config['handled'];
         $this->metaRecord = $this->generateMetaRecord($config['source']);
 

@@ -57,6 +57,3 @@ function loopGo()
 
     Worker::runAll();
 }
-
-
-
