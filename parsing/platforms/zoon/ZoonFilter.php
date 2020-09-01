@@ -11,6 +11,8 @@ class ZoonFilter implements FilterInterface
     const FORMAT_MIX = 2;
     const FORMAT_SIMPLE = 3;
 
+    const TYPE_REVIEWS = 'reviews';
+
     private $format;
 
     /**
@@ -21,7 +23,7 @@ class ZoonFilter implements FilterInterface
      */
     public function clearData($buffer) : array
     {
-        if (is_object($buffer)) {
+        if ($buffer['type'] == self::TYPE_REVIEWS) {
             $buffer = $this->handlingReviews($buffer);
         }
 

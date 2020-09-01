@@ -71,7 +71,7 @@ class LoggerManager
     public static function log(string $log_code_name,string $message = '' , array $context = []):void
     {
             if(!in_array($log_code_name,self::MESSAGE_CODES)){
-                throw new \Exception('No such message level');
+                $log_code_name = self::INFO;
             }
 
             foreach ($context as &$v){

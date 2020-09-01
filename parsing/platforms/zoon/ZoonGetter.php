@@ -2,13 +2,16 @@
 
 namespace parsing\platforms\zoon;
 
+use parsing\DB\DatabaseShell;
 use parsing\factories\factory_interfaces\GetterInterface;
+use parsing\logger\LoggerManager;
+use Unirest\Request;
 use phpQuery;
 
 class ZoonGetter implements GetterInterface {
 
-    private $handled;
-    private $sourceConfig;
+    private $status;
+    private $oldHash;
 
     private $metaRecord;
 
@@ -17,19 +20,22 @@ class ZoonGetter implements GetterInterface {
 
     private $activePage = 0;
 
-    const EMPTY_PARAMETERS = '';
-    const EMPTY_REVIEWS = '';
+    const EMPTY = '';
+
+    const TYPE_REVIEWS = 'reviews';
+    const TYPE_METARECORD = 'meta';
 
     const REVIEWS_LIMIT = 102;
 
-    const QUERY_CONSTANT_PARAMETERS = 'https://zoon.ru/js.php?area=service&action=CommentList&owner[]=organization&' .
-    'is_widget=1&strategy_options[with_photo]=0&allow_comment=0&allow_share=0&limit=' . self::REVIEWS_LIMIT;
+    const QUERY_CONSTANT_PARAMETERS = "https://zoon.ru/js.php?area=service&action=CommentList&owner[]=organization&" .
+        "is_widget=1&strategy_options[with_photo]=0&allow_comment=0&allow_share=0&limit=" . self::REVIEWS_LIMIT;
 
     private $addQueryParameters = [
         'owner[]' => 'prof',
-        'organization' => self::EMPTY_PARAMETERS,
-        'skip' => self::EMPTY_PARAMETERS,
+        'organization' => self::EMPTY,
+        'skip' => self::EMPTY,
     ];
+
 
     /**
      * Данная функция выполняется после инициализации объекта, и задает значения для полей, а также
@@ -37,32 +43,100 @@ class ZoonGetter implements GetterInterface {
      *
      * @param $config
      */
-
-    // todo: Если в записи $config не хватает данных для обработки - exception, logger
     public function setConfig($config) {
-        $this->handled = $config['handled'];
-        $this->metaRecord = $this->generateMetaRecord($config['source']);
 
-        if ($this->handled === self::HANDLED_TRUE) {
-            $this->sourceConfig = json_decode($config["config"], true);
+        if ($this->validateConfig($config)) {
+            $this->status = $config['handled'];
+            $this->metaRecord = $this->generateMetaRecord($config['source']);
+
+            if ($this->status === self::STATUS_HANDLED) {
+                $this->oldHash = json_decode($config["config"], true)['old_hash'];
+            }
         }
     }
+
+
+    private function validateConfig($config) {
+        $response = Request::get($config['source']);
+
+        $incorrectHttpCode = $response->code != 200;
+        $handledNotExist = !array_key_exists("handled", $config);
+        $trackNotExist = !array_key_exists("track", $config);
+        $sourceHashNotExist = !array_key_exists("track", $config);
+
+        if ($incorrectHttpCode || $handledNotExist || $trackNotExist || $sourceHashNotExist) {
+
+            $this->status = self::STATUS_UNPROCESSABLE;
+            (new DatabaseShell())->updateSourceReview($config['source_hash'], ['handled' => 'UNPROCESSABLE']);
+            LoggerManager::log(LoggerManager::DEBUG, "Недостаточно данных для обработки ссылки", [$config]);
+
+            return false;
+        }
+
+        return true;
+    }
+
+
+    /**
+     * Данная фунция получает id организации, который требуется при запросе отзывов,
+     * а также сохраняет мета информацию о месте.
+     *
+     * @param $source
+     * @return mixed
+     */
+    private function generateMetaRecord($source) {
+
+        $response = Request::get($source);
+        $document = phpQuery::newDocument($response->body);
+
+        $organizationId = $document->find('.comment-section')->attr('data-owner-id');
+
+        if ($organizationId == "") {
+            $message = "Не удалось получить токен заведения";
+            LoggerManager::log(LoggerManager::DEBUG, $message, $source);
+
+            $this->status = self::STATUS_UNPROCESSABLE;
+            (new DatabaseShell())->updateSourceReview($config['source_hash'], ['handled' => 'UNPROCESSABLE']);
+
+        } else {
+            $this->addQueryParameters['organization'] = $organizationId;
+        }
+
+        $countReviews = $document->find('.fs-large.gray.js-toggle-content')->text();
+        $metaRecord['count_reviews'] = explode(' ', trim($countReviews))[0];
+
+        $metaRecord['average_mark'] = $document->find('span.rating-value')->text();
+
+        phpQuery::unloadDocuments();
+
+        return $metaRecord;
+    }
+
 
     /**
      * Функция выбирает необходимые метод обработки ссылки, и возвращает результат в Parser.
      *
      * @return array|object
      */
-
     public function getNextRecords(){
-        if ($this->handled === 'HANDLED') {
-            $records = $this->parseHandledSource();
-        } else {
-            $records = $this->parseNewSource();
+
+        switch ($this->status) {
+            case self::STATUS_NEW:
+                $records = $this->parseNewSource();
+                break;
+
+            case self::STATUS_HANDLED:
+                $records = $this->parseHandledSource();
+                break;
+
+            case self::STATUS_UNPROCESSABLE:
+                $records = $this->getEndCode();
+                break;
         }
 
         return $records;
     }
+
 
     /**
      * Функция парсит уже ранее обработанные ссылки. Возвращает сначала отзывы, если появились новые отзывы.
@@ -78,18 +152,21 @@ class ZoonGetter implements GetterInterface {
         } else {
             $records = $this->getReviews();
 
-
             if ($this->isEqualsHash(md5($records)) || $this->isReviewsSended == true) {
                 $records = $this->getMetaRecord();
+                $records['type'] = self::TYPE_METARECORD;
                 $this->isEnd = true;
+
             } else {
                 $records = json_decode($records);
+                $records['type'] = self::TYPE_REVIEWS;
                 $this->isReviewsSended = true;
             }
         }
 
         return $records;
     }
+
 
     /**
      * Функция парсит новые ссылки. Возвращает сначала все возможные отзывы.
@@ -105,20 +182,23 @@ class ZoonGetter implements GetterInterface {
         } else {
             $records = $this->getReviews();
 
-
             if ($this->activePage == 1) {
                 $this->metaRecord['hash'] = md5($records);
             }
 
-            $records = json_decode($records);
-            if ($records->list == self::EMPTY_REVIEWS) {
+            $records = json_decode($records, true);
+            $records['type'] = self::TYPE_REVIEWS;
+
+            if ($records['list'] == self::EMPTY) {
                 $records = $this->getMetaRecord();
+                $records['type'] = self::TYPE_METARECORD;
                 $this->isEnd = true;
             }
         }
 
         return $records;
     }
+
 
     /**
      * Функция пытается получить закодированную json строку с отзывами.
@@ -130,62 +210,21 @@ class ZoonGetter implements GetterInterface {
     private function getReviews() {
         $this->addQueryParameters['skip'] = $this->activePage++ * self::REVIEWS_LIMIT;
         $addQuery = http_build_query($this->addQueryParameters);
-        return file_get_contents(self::QUERY_CONSTANT_PARAMETERS . '&' . $addQuery);
+        return Request::get(self::QUERY_CONSTANT_PARAMETERS . '&' . $addQuery)->body;
     }
 
-    /**
-     * Возвращает массив с мета-данными ссылки
-     *
-     * @return array
-     */
+
     private function getMetaRecord() {
         return $this->metaRecord;
     }
 
-    /**
-     * Возвращает END_CODE, который сигнализирует объекту Parser о том, что необходимо закончить работу.
-     *
-     * @return int
-     */
+
     private function getEndCode() {
         return self::END_CODE;
     }
 
-    /**
-     * Данная фунция получает id организации, который требуется при запросе отзывов,
-     * а также сохраняет мета информацию о месте.
-     *
-     * @param $source
-     * @return mixed
-     */
-    private function generateMetaRecord($source) {
-        // todo: ? Можно добавить в ассоциативный массив поле 'status' => meta, для того, чтобы различать сообщения
 
-        $file = file_get_contents($source);
-        $document = phpQuery::newDocument($file);
-
-        // todo: Создать проверку, на получение токена. В случае, если не получается, закончить работу парсера,
-        //          и сгенерировать сообщение в логгере.
-
-        $this->addQueryParameters['organization'] = $document
-            ->find('.comments-section')->attr('data-owner-id');
-
-        // todo: Если не удалось получить мета данные - exception, logger
-
-        $countReviews = $document->find('.fs-large.gray.js-toggle-content')->text();
-        $metaRecord['count_reviews'] = explode(' ', trim($countReviews))[0];
-        $metaRecord['average_mark'] = $document->find('span.rating-value')->text();
-
-        phpQuery::unloadDocuments();
-
-        return $metaRecord;
-    }
-
-    /**
-     * @param $hash
-     * @return bool
-     */
     private function isEqualsHash($hash) {
-        return $hash === $this->sourceConfig['old_hash'];
+        return $hash === $this->oldHash;
     }
 }

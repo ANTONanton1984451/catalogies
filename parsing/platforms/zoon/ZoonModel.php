@@ -12,9 +12,12 @@ use parsing\services\TaskQueueController;
 class ZoonModel implements ModelInterface {
     const HALF_YEAR_TIMESTAMP = 15552000;
 
+    const TYPE_REVIEWS = 'reviews';
+    const TYPE_METARECORD = 'meta';
+
     private $sourceConfig;
     private $sourceHash;
-    private $handled;
+    private $status;
 
     private $beforeHalfYearTimestamp;
 
@@ -38,13 +41,11 @@ class ZoonModel implements ModelInterface {
      * @param $config
      */
     public function setConfig($config) {
-        // todo: В случае, если в конфиге недостаточно информации для записи - exception, logger
-
-        $this->handled = $config['handled'];
+        $this->status = $config['handled'];
         $this->sourceHash = $config['source_hash'];
         $this->constInfo['source_hash_key'] = $config['source_hash'];
 
-        if ($this->handled === "HANDLED") {
+        if ($this->status === self::STATUS_HANDLED) {
             $sourceConfig = json_decode($config['config'], true);
             $this->maxDate = $sourceConfig['max_date'];
         }
@@ -56,21 +57,20 @@ class ZoonModel implements ModelInterface {
      * @param $records
      */
     public function writeData($records) {
-        if (isset($records['average_mark'])) {
+        if ($records['type'] == self::TYPE_METARECORD) {
             $this->writeMetaRecord($records);
             $this->writeTaskQueue();
-        } else {
+
+        } elseif ($records['type'] == self::TYPE_REVIEWS) {
             $this->writeReviews($records);
         }
     }
 
-    /**
-     * @param $records array
-     */
+    /** @param $records array */
     private function writeReviews(array $records) {
-        if ($this->handled === "NEW") {
+        if ($this->status === self::STATUS_NEW) {
             $datePoint = $this->beforeHalfYearTimestamp;
-        } else {
+        } elseif ($this->status === self::STATUS_HANDLED) {
             $datePoint = $this->maxDate;
         }
 
@@ -102,9 +102,7 @@ class ZoonModel implements ModelInterface {
         }
     }
 
-    /**
-     * @param $records array
-     */
+    /** @param $records array */
     private function writeMetaRecord(array $records) {
         $sourceMeta = [
             'count_reviews' => $records['count_reviews'],
@@ -128,9 +126,6 @@ class ZoonModel implements ModelInterface {
             'old_hash' => $hash,
         ];
 
-        // todo: Проверка на наличие всех необходимы записей, иначе exception - logger
-
-        // todo: Проверка успешности записи, иначе exception - rollback - logger
         (new DatabaseShell())->updateSourceReview($this->sourceHash, [
             'source_meta_info' => json_encode($sourceMeta),
             'source_config' => json_encode($sourceConfig),
@@ -138,12 +133,10 @@ class ZoonModel implements ModelInterface {
         ]);
     }
 
-    /**
-     * Обращается к стороннему сервису, которые формирует очередь последующей обработки этой ссылки
-     */
+    /** Обращается к стороннему сервису, которые формирует очередь последующей обработки этой ссылки */
     private function writeTaskQueue() {
         // todo: Проверка успешности записи, иначе exception - rollback - logger
-        if ($this->handled === "NEW") {
+        if ($this->status === "NEW") {
             (new TaskQueueController())->insertTaskQueue($this->countReviews, $this->minDate, $this->sourceHash);
         } else {
             (new TaskQueueController())->updateTaskQueue($this->sourceHash);

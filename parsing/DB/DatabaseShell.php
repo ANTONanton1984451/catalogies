@@ -113,20 +113,13 @@ class DatabaseShell
     }
 
     /**
-     * Функция производит откат отзывов, и изменяет параметр handled,
-     * чтобы провести дальнейшую обработку данной ссылки в отдельном порядке.
+     * Функция производит откат отзывов по какой либо ссылке,
+     * если не имеется возможности гарантировать целостность данных
      *
      * @param $source_hash_key
      */
     public function rollback($source_hash_key) {
         $this->database->delete("review", ['source_hash_key' => $source_hash_key]);
-        $sourceHandled = $this->database->select("source_review", ["handled"], ["source_hash" => $source_hash_key]);
-
-        if ($sourceHandled == "HANDLED" || $sourceHandled == "NEW") {
-            $this->database->update("source_review", ["handled" => "WITH_ERROR"], ["source_hash" => $source_hash_key]);
-        } elseif ($sourceHandled == "WITH_ERROR") {
-            $this->database->update("source_review", ["handled" => "FATAL_ERROR"], ["source_hash" => $source_hash_key]);
-        }
     }
 
 

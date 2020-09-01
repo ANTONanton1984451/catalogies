@@ -18,7 +18,7 @@ class ParserManager {
         "'yell'"
     ];
 
-    const SOURCES_LIMIT = 2;
+    const SOURCES_LIMIT = 1;
 
     private $worker;
     private $sources = [];
@@ -30,11 +30,12 @@ class ParserManager {
 
     public function parseSources() {
         if (count($this->sources) == 0) {
-            echo "Worker #$this->worker: empty_sources \n";
+            echo "Worker #$this->worker: not sources for parsing \n";
             return "empty_sources";
         }
 
         foreach ($this->sources as $source) {
+
             try {
                 $parser_factory = (new ParserFactory())->getFactory($source['platform']);
             } catch (Exception $e) {
