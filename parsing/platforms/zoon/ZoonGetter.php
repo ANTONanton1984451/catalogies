@@ -8,6 +8,8 @@ use parsing\logger\LoggerManager;
 use Unirest\Request;
 use phpQuery;
 
+// todo: Проверять раз в сутки результаты по одному парсеру при помощи безголового браузера
+
 class ZoonGetter implements GetterInterface {
 
     private $status;
@@ -47,7 +49,7 @@ class ZoonGetter implements GetterInterface {
 
         if ($this->validateConfig($config)) {
             $this->status = $config['handled'];
-            $this->metaRecord = $this->generateMetaRecord($config['source']);
+            $this->metaRecord = $this->generateMetaRecord($config['source'], $config['source_hash']);
 
             if ($this->status === self::STATUS_HANDLED) {
                 $this->oldHash = json_decode($config["config"], true)['old_hash'];
@@ -62,9 +64,8 @@ class ZoonGetter implements GetterInterface {
         $incorrectHttpCode = $response->code != 200;
         $handledNotExist = !array_key_exists("handled", $config);
         $trackNotExist = !array_key_exists("track", $config);
-        $sourceHashNotExist = !array_key_exists("track", $config);
 
-        if ($incorrectHttpCode || $handledNotExist || $trackNotExist || $sourceHashNotExist) {
+        if ($incorrectHttpCode || $handledNotExist || $trackNotExist) {
 
             $this->status = self::STATUS_UNPROCESSABLE;
             (new DatabaseShell())->updateSourceReview($config['source_hash'], ['handled' => 'UNPROCESSABLE']);
@@ -82,9 +83,10 @@ class ZoonGetter implements GetterInterface {
      * а также сохраняет мета информацию о месте.
      *
      * @param $source
+     * @param $source_hash
      * @return mixed
      */
-    private function generateMetaRecord($source) {
+    private function generateMetaRecord($source, $source_hash) {
 
         $response = Request::get($source);
         $document = phpQuery::newDocument($response->body);
@@ -93,10 +95,10 @@ class ZoonGetter implements GetterInterface {
 
         if ($organizationId == "") {
             $message = "Не удалось получить токен заведения";
-            LoggerManager::log(LoggerManager::DEBUG, $message, $source);
+            LoggerManager::log(LoggerManager::DEBUG, $message, [$source]);
 
             $this->status = self::STATUS_UNPROCESSABLE;
-            (new DatabaseShell())->updateSourceReview($config['source_hash'], ['handled' => 'UNPROCESSABLE']);
+            (new DatabaseShell())->updateSourceReview($source_hash, ['handled' => 'UNPROCESSABLE']);
 
         } else {
             $this->addQueryParameters['organization'] = $organizationId;
@@ -104,7 +106,6 @@ class ZoonGetter implements GetterInterface {
 
         $countReviews = $document->find('.fs-large.gray.js-toggle-content')->text();
         $metaRecord['count_reviews'] = explode(' ', trim($countReviews))[0];
-
         $metaRecord['average_mark'] = $document->find('span.rating-value')->text();
 
         phpQuery::unloadDocuments();
@@ -146,10 +147,7 @@ class ZoonGetter implements GetterInterface {
      * @return object|array|int
      */
     private function parseHandledSource() {
-        if ($this->isEnd == true) {
-            $records = $this->getEndCode();
-
-        } else {
+        if ($this->isEnd != true) {
             $records = $this->getReviews();
 
             if ($this->isEqualsHash(md5($records)) || $this->isReviewsSended == true) {
@@ -162,6 +160,9 @@ class ZoonGetter implements GetterInterface {
                 $records['type'] = self::TYPE_REVIEWS;
                 $this->isReviewsSended = true;
             }
+
+        } else {
+            $records = $this->getEndCode();
         }
 
         return $records;
@@ -176,10 +177,7 @@ class ZoonGetter implements GetterInterface {
      * @return object|array|int
      */
     private function parseNewSource() {
-        if ($this->isEnd == true) {
-            $records = $this->getEndCode();
-
-        } else {
+        if ($this->isEnd != true) {
             $records = $this->getReviews();
 
             if ($this->activePage == 1) {
@@ -194,6 +192,9 @@ class ZoonGetter implements GetterInterface {
                 $records['type'] = self::TYPE_METARECORD;
                 $this->isEnd = true;
             }
+
+        } else {
+            $records = $this->getEndCode();
         }
 
         return $records;
@@ -207,7 +208,7 @@ class ZoonGetter implements GetterInterface {
      *
      * @return string
      */
-    private function getReviews() {
+    private function getReviews() : string {
         $this->addQueryParameters['skip'] = $this->activePage++ * self::REVIEWS_LIMIT;
         $addQuery = http_build_query($this->addQueryParameters);
         return Request::get(self::QUERY_CONSTANT_PARAMETERS . '&' . $addQuery)->body;
