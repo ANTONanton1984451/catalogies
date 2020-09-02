@@ -12,6 +12,7 @@ use parsing\factories\factory_interfaces\ParserFactoryInterfaces;
 use parsing\platforms\google\GoogleFilter;
 use parsing\platforms\google\GoogleGetter;
 use parsing\platforms\google\GoogleModel;
+use parsing\services\TaskQueueController;
 
 class GoogleFactory implements ParserFactoryInterfaces
 {
@@ -21,13 +22,13 @@ class GoogleFactory implements ParserFactoryInterfaces
     }
     public function buildGetter(): GetterInterface
     {
-        return new GoogleGetter(new \Google_Client());
+        return new GoogleGetter(new \Google_Client(),new DatabaseShell());
     }
 
     public function buildModel(): ModelInterface
     {
 
-        return new GoogleModel(new DatabaseShell());
+        return new GoogleModel(new DatabaseShell(),new TaskQueueController());
     }
 
 }

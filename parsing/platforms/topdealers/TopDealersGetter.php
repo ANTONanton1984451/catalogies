@@ -26,7 +26,6 @@ class TopDealersGetter implements GetterInterface
 
     private $MainPage;
     private $ResponsesPage;
-    private $FullResponsePage;
 
     private $last_date_review_db;
 
@@ -205,11 +204,11 @@ class TopDealersGetter implements GetterInterface
      */
     private function getFullReview(string $url):string
     {
-        $this->FullResponsePage = $this->getContent($url);
+        $FullResponsePage = $this->getContent($url);
 
-        if($this->FullResponsePage !== self::BAD_CONNECTION){
-            $this->HTML_to_DOM($this->FullResponsePage);
-            return $this->FullResponsePage->find('.info p')->text();
+        if($FullResponsePage !== self::BAD_CONNECTION){
+            $this->HTML_to_DOM($FullResponsePage);
+            return $FullResponsePage->find('.info p')->text();
         }
         return 'Нет полной страницы';
     }

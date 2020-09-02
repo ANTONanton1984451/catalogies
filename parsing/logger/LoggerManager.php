@@ -64,7 +64,6 @@ class LoggerManager
      * @param string $log_code_name код записи(смотри константы)
      * @param string $message сообщение в записи
      * @param array $context переменные контекста,где произведена запись в лог.Можно использовать и объекты
-     * @throws \Exception в случае неверного кода записи
      * Особенность записи в лог состоит в том,что объекты перед сериализацией экранируются.
      * В связи с этим перед испоьзованием сериализированного объекта его нужно "разэкранировать"
      */
@@ -77,7 +76,6 @@ class LoggerManager
             foreach ($context as &$v){
                 if(is_object($v)){
                     $v = addslashes(serialize($v));
-                    echo "Произошла сериализация";
                 }
             }
             self::$logger->$log_code_name($message,$context);
