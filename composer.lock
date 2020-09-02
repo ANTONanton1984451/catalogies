@@ -220,16 +220,16 @@
         },
         {
             "name": "google/apiclient-services",
-            "version": "v0.143",
+            "version": "v0.144",
             "source": {
                 "type": "git",
                 "url": "https://github.com/googleapis/google-api-php-client-services.git",
-                "reference": "22f5d97f1fb83a9de553319354b36b829549975a"
+                "reference": "74c5fc850d9ce441c6b3e52af11b986cd11d379a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/googleapis/google-api-php-client-services/zipball/22f5d97f1fb83a9de553319354b36b829549975a",
-                "reference": "22f5d97f1fb83a9de553319354b36b829549975a",
+                "url": "https://api.github.com/repos/googleapis/google-api-php-client-services/zipball/74c5fc850d9ce441c6b3e52af11b986cd11d379a",
+                "reference": "74c5fc850d9ce441c6b3e52af11b986cd11d379a",
                 "shasum": ""
             },
             "require": {
@@ -253,7 +253,7 @@
             "keywords": [
                 "google"
             ],
-            "time": "2020-08-23T00:24:45+00:00"
+            "time": "2020-08-30T00:24:57+00:00"
         },
         {
             "name": "google/auth",
@@ -635,6 +635,16 @@
                 "logging",
                 "psr-3"
             ],
+            "funding": [
+                {
+                    "url": "https://github.com/Seldaek",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/monolog/monolog",
+                    "type": "tidelift"
+                }
+            ],
             "time": "2020-07-23T08:41:23+00:00"
         },
         {
@@ -726,6 +736,20 @@
                 "twofish",
                 "x.509",
                 "x509"
+            ],
+            "funding": [
+                {
+                    "url": "https://github.com/terrafrost",
+                    "type": "github"
+                },
+                {
+                    "url": "https://www.patreon.com/phpseclib",
+                    "type": "patreon"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/phpseclib/phpseclib",
+                    "type": "tidelift"
+                }
             ],
             "time": "2020-07-08T09:08:33+00:00"
         },
@@ -963,16 +987,16 @@
         },
         {
             "name": "workerman/workerman",
-            "version": "v4.0.7",
+            "version": "v4.0.9",
             "source": {
                 "type": "git",
-                "url": "https://github.com/walkor/Workerman.git",
-                "reference": "8241a0d2aa0f412e6131ee4024b493cd5a0f1dd5"
+                "url": "git@github.com:walkor/Workerman.git",
+                "reference": "945f94834755b505ce92fe46d296a8813aaae352"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/walkor/Workerman/zipball/8241a0d2aa0f412e6131ee4024b493cd5a0f1dd5",
-                "reference": "8241a0d2aa0f412e6131ee4024b493cd5a0f1dd5",
+                "url": "https://api.github.com/repos/walkor/Workerman/zipball/945f94834755b505ce92fe46d296a8813aaae352",
+                "reference": "945f94834755b505ce92fe46d296a8813aaae352",
                 "shasum": ""
             },
             "require": {
@@ -1005,7 +1029,7 @@
                 "asynchronous",
                 "event-loop"
             ],
-            "time": "2020-08-10T05:11:23+00:00"
+            "time": "2020-08-31T07:39:17+00:00"
         }
     ],
     "packages-dev": [],

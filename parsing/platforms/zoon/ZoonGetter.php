@@ -93,7 +93,7 @@ class ZoonGetter implements GetterInterface {
 
         if ($organizationId == "") {
             $message = "Не удалось получить токен заведения";
-            LoggerManager::log(LoggerManager::DEBUG, $message, $source);
+            LoggerManager::log(LoggerManager::DEBUG, $message, [$source]);
 
             $this->status = self::STATUS_UNPROCESSABLE;
             (new DatabaseShell())->updateSourceReview($config['source_hash'], ['handled' => 'UNPROCESSABLE']);
