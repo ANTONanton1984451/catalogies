@@ -67,6 +67,11 @@ class GoogleFilter implements FilterInterface
           }else{
               $review['text'] = '';
           }
+          if(isset($v['reviewReply'])){
+              $review['is_answered'] = 'true';
+          }else{
+              $review['is_answered'] = 'false';
+          }
 
           $this->buffer_info['reviews'][] = $review;
       }

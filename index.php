@@ -49,7 +49,7 @@ function loopGo()
     $lowPriorityWorker->count = 1;
 
     $lowPriorityWorker->onWorkerStart = function ($lowPriorityWorker) {
-        $timeInterval = 20;
+        $timeInterval = 5;
         $timerId = Timer::add($timeInterval, function () {
             (new ParserManager(LOW_PRIORITY_WORKER))->parseSources();
         });

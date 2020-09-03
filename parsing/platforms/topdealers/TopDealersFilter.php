@@ -41,7 +41,6 @@ class TopDealersFilter implements FilterInterface
             $oneReview['identifier'] = $v['identifier'];
             $oneReview['date']       = $v['date'];
             $oneReview['rating']     = $this->tonalToRating($v['tonal']);
-
             $this->mainData['reviews'][] = $oneReview;
         }
 
@@ -50,7 +49,7 @@ class TopDealersFilter implements FilterInterface
     /**
      * @param string $tonal
      * @return string
-     * Переводит тональность в ENUM виду в таблице
+     * Переводит тональность к ENUM виду в таблице
      */
     private function tonalToEnum(string $tonal):string
     {

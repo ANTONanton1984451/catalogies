@@ -10,10 +10,6 @@ use parsing\factories\factory_interfaces\ModelInterface;
 use parsing\services\TaskQueueController;
 
 class ZoonModel implements ModelInterface {
-    const HALF_YEAR_TIMESTAMP = 15552000;
-
-    const TYPE_REVIEWS = 'reviews';
-    const TYPE_METARECORD = 'meta';
 
     private $sourceConfig;
     private $sourceHash;
@@ -45,7 +41,7 @@ class ZoonModel implements ModelInterface {
         $this->sourceHash = $config['source_hash'];
         $this->constInfo['source_hash_key'] = $config['source_hash'];
 
-        if ($this->status === self::STATUS_HANDLED) {
+        if ($this->status === self::SOURCE_HANDLED) {
             $sourceConfig = json_decode($config['config'], true);
             $this->maxDate = $sourceConfig['max_date'];
         }
@@ -68,9 +64,9 @@ class ZoonModel implements ModelInterface {
 
     /** @param $records array */
     private function writeReviews(array $records) {
-        if ($this->status === self::STATUS_NEW) {
+        if ($this->status === self::SOURCE_NEW) {
             $datePoint = $this->beforeHalfYearTimestamp;
-        } elseif ($this->status === self::STATUS_HANDLED) {
+        } elseif ($this->status === self::SOURCE_HANDLED) {
             $datePoint = $this->maxDate;
         }
 

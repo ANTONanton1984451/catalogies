@@ -20,7 +20,6 @@ class GoogleGetter  implements GetterInterface
 {
     const URL = 'https://mybusiness.googleapis.com/v4/';
     const PAGE_SIZE = '50';
-    const HALF_YEAR = 15552000;
     const CONTINUE = 777;
     const LAST_ITERATION = 'last_iteration';
 
@@ -63,9 +62,7 @@ class GoogleGetter  implements GetterInterface
             $this->trigger = self::END_CODE;
         }
 
-
-        $this->halfYearAgo=time()-self::HALF_YEAR;
-
+        $this->halfYearAgo=time()-self::HALF_YEAR_TIMESTAMP;
     }
 
     /**
@@ -94,10 +91,10 @@ class GoogleGetter  implements GetterInterface
                 $this->checkResponse();
         }
 
-        if($this->handle === self::STATUS_NEW && $this->trigger === self::CONTINUE){
+        if($this->handle === self::SOURCE_NEW && $this->trigger === self::CONTINUE){
             $this->formData($this->halfYearAgo);
 
-        }elseif($this->handle == self::STATUS_HANDLED && $this->trigger === self::CONTINUE){
+        }elseif($this->handle == self::SOURCE_HANDLED && $this->trigger === self::CONTINUE){
             $lastReviewFromSource = $this->arrayReviewToMd5Hash();
 
             if($lastReviewFromSource === $this->mainData['config']['last_review_hash']){
@@ -107,9 +104,10 @@ class GoogleGetter  implements GetterInterface
                 $this->formData($this->last_review_db);
             }
         }
+
         LoggerManager::log(LoggerManager::INFO,
                                 'send main data|GoogleGetter',
-                                        ['main_data'=>$this->mainData,'trigger'=>$this->trigger,'source'=>$this->source]
+                                        ['trigger'=>$this->trigger,'source'=>$this->source]
                           );
         return $this->mainData;
     }
@@ -162,7 +160,7 @@ class GoogleGetter  implements GetterInterface
             $this->handle = $config['handled'];
             $this->mainData['config'] = $decode_config;
 
-            if($this->handle === self::STATUS_HANDLED){
+            if($this->handle === self::SOURCE_HANDLED){
                 $this->last_review_db = $decode_config['last_review_date'];
             }
         }else{

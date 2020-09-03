@@ -37,9 +37,9 @@ class GoogleModel implements ModelInterface
      */
     public function writeData($data)
     {
-       if($this->handled === self::STATUS_NEW && $this->config_status === self::CONFIG_NOT_EMPTY){
+       if($this->handled === self::SOURCE_NEW && $this->config_status === self::CONFIG_NOT_EMPTY){
            $this->writeNewData($data);
-       }elseif($this->handled === self::STATUS_HANDLED && $this->config_status === self::CONFIG_NOT_EMPTY){
+       }elseif($this->handled === self::SOURCE_HANDLED && $this->config_status === self::CONFIG_NOT_EMPTY){
            $this->writeHandledData($data);
        }
         LoggerManager::log(LoggerManager::INFO,
@@ -95,7 +95,7 @@ class GoogleModel implements ModelInterface
 
         }else{
             $columns = [ 'source_meta_info' => json_encode($data['meta']),
-                         'handled'=> self::STATUS_HANDLED];
+                         'handled'=> self::SOURCE_HANDLED];
 
             $this->dataBase->updateSourceReview($this->source_hash,$columns);
             $this->queueController->insertTaskQueue($this->reviewCount,

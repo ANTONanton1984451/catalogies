@@ -11,7 +11,7 @@ class ZoonFilter implements FilterInterface
     const FORMAT_MIX = 2;
     const FORMAT_SIMPLE = 3;
 
-    const TYPE_REVIEWS = 'reviews';
+
 
     private $format;
 

@@ -8,7 +8,6 @@ use parsing\services\TaskQueueController;
 
 class YellModel implements ModelInterface
 {
-    const HALF_YEAR_TIMESTAMP = 15552000;
 
     private $sourceConfig;
     private $sourceHash;
