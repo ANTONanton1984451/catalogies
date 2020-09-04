@@ -18,7 +18,7 @@ class ParserManager {
         "'yell'"
     ];
 
-    const SOURCES_LIMIT = 1;
+    const SOURCES_LIMIT = 5;
 
     private $worker;
     private $sources = [];
@@ -46,6 +46,7 @@ class ParserManager {
             $parser->setGetter($parser_factory->buildGetter());
             $parser->setFilter($parser_factory->buildFilter());
             $parser->setModel($parser_factory->buildModel());
+
             $parser->parseSource();
         }
 

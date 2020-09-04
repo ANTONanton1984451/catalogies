@@ -79,7 +79,7 @@ class TopDealersGetter implements GetterInterface
     public function setConfig($config)
     {
         $this->source  = $config['source'];
-        $this->handled = $config['handle'];
+        $this->handled = $config['handled'];
         $this->config  = $config['config'];
     }
 

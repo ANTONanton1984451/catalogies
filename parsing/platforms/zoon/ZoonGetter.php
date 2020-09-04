@@ -1,5 +1,7 @@
 <?php
 
+// todo: Проверить во всех getter классах, что кладется в поля average mark и count_reviews, и не перепутаны ли они
+
 namespace parsing\platforms\zoon;
 
 use parsing\DB\DatabaseShell;

@@ -100,13 +100,9 @@ class DatabaseShell
 
     // Work with Review
     public function insertReviews(array $reviews, array $constInfo = []) {
-        $database = $this->database;
-
-        $database->action(function ($database){
             foreach ($reviews as $review) {
-                $database->insert("review", array_merge($review, $constInfo));
+                $this->database->insert("review", array_merge($review, $constInfo));
             }
-        });
     }
 
     // Work with Source Review
