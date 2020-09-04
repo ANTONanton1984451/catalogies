@@ -3,27 +3,34 @@
 
 namespace parsing\platforms\google;
 
+use parsing\DB\DatabaseShell;
 use parsing\factories\factory_interfaces\GetterInterface;
 use Google_Client;
+use parsing\logger\LoggerManager;
 
 /**
  * Class GoogleGetter
  * @package parsing\platforms\google
+ * По сути дела все методы класса - это работа с полем $mainData,
+ * поэтому многие методы ничего не возвращают,т.к. напрямую работают с этим полем
+ * todo:Не очень хорошо давать доступ к БД геттеру,над этим исправлением надо подумать(возможно слой сервисов)
+ *
  */
 class GoogleGetter  implements GetterInterface
 {
     const URL = 'https://mybusiness.googleapis.com/v4/';
     const PAGE_SIZE = '50';
-    const HALF_YEAR = 15552000;
     const CONTINUE = 777;
     const LAST_ITERATION = 'last_iteration';
+
+    private $client;
+    private $dataBase;
 
     protected $source;
     protected $track;//maybe deleted?
     protected $handle;
 
     private $trigger = self::CONTINUE;
-    private $client;
     private $halfYearAgo;
     private $iterator = 0;
 
@@ -38,24 +45,30 @@ class GoogleGetter  implements GetterInterface
     /**
      * GoogleGetter constructor.
      * @param Google_Client $client
-     * @throws \Google_Exception
-     * установка переменной,отсчитывающей временную метку в полгода
+     * @param DatabaseShell $dataBase
+     * @throws \Exception
      */
-    public function __construct(Google_Client $client)
+    public function __construct(Google_Client $client,DatabaseShell $dataBase)
     {
         $this->client = $client;
+        $this->dataBase = $dataBase;
+        try{
+            $client->setAuthConfig(__DIR__.'/secret.json');
+        }catch (\Exception $e){
+            LoggerManager::log(LoggerManager::ALERT,
+                                    'Problems with secret.json|GoogleGetter',
+                                            ['exception_message'=>$e->getMessage()]
+                              );
+            $this->trigger = self::END_CODE;
+        }
 
-        $client->setAuthConfig(__DIR__.'/secret.json');
-
-        $this->halfYearAgo=time()-self::HALF_YEAR;
-
+        $this->halfYearAgo=time()-self::HALF_YEAR_TIMESTAMP;
     }
 
     /**
      *
      * Функция,которая вызывает все остальные методы,получает массив данных с GMB_API в необработанном виде
-     * При обнаружении отсутсвия отзывов или того,что уже совершилась последняя итерация,сразу же возвращает
-     * триггер,сообщающий о конце работы цикла.
+     * При обнаружении отсутсвия отзывов или того,что уже совершилась последняя итерация, возвращает метаинформацию
      * При первичной обработке происходит получение всех отзывов за последние пол-года.
      * При вторичной обработке происходит сверка хэшей конфига и первого отзыва,
      * полученного в момент выполнения через GMB_API.
@@ -78,10 +91,10 @@ class GoogleGetter  implements GetterInterface
                 $this->checkResponse();
         }
 
-        if($this->handle === self::STATUS_NEW && $this->trigger === self::CONTINUE){
+        if($this->handle === self::SOURCE_NEW && $this->trigger === self::CONTINUE){
             $this->formData($this->halfYearAgo);
 
-        }elseif($this->handle == self::STATUS_HANDLED && $this->trigger === self::CONTINUE){
+        }elseif($this->handle == self::SOURCE_HANDLED && $this->trigger === self::CONTINUE){
             $lastReviewFromSource = $this->arrayReviewToMd5Hash();
 
             if($lastReviewFromSource === $this->mainData['config']['last_review_hash']){
@@ -92,10 +105,17 @@ class GoogleGetter  implements GetterInterface
             }
         }
 
+        LoggerManager::log(LoggerManager::INFO,
+                                'send main data|GoogleGetter',
+                                        ['trigger'=>$this->trigger,'source'=>$this->source]
+                          );
         return $this->mainData;
     }
 
-
+    /**
+     * @param int $timeToCut
+     * Метод устанавливает конфиги,обрезает отзывы и вызывает метод,проверяющий обрезанные данные
+     */
     private function formData(int $timeToCut):void
     {
         if($this->iterator === 1){
@@ -115,7 +135,9 @@ class GoogleGetter  implements GetterInterface
         }
     }
 
-
+    /**
+     * Проверяет данные перед отправкой
+     */
     private function checkMainData():void {
         if(empty($this->mainData['platform_info']['reviews'])){
             $this->trigger = self::END_CODE;
@@ -131,15 +153,25 @@ class GoogleGetter  implements GetterInterface
      */
     public function setConfig($config)
     {
-        $decode_config = json_decode($config['config'],true);
 
-        $this->source = $config['source'];
-        $this->handle = $config['handled'];
-        $this->mainData['config'] = $decode_config;
+        if($this->validateConfig($config)){
+            $decode_config = json_decode($config['config'],true);
+            $this->source = $config['source'];
+            $this->handle = $config['handled'];
+            $this->mainData['config'] = $decode_config;
 
-        if($this->handle === self::STATUS_HANDLED){
-            $this->last_review_db = $decode_config['last_review_date'];
+            if($this->handle === self::SOURCE_HANDLED){
+                $this->last_review_db = $decode_config['last_review_date'];
+            }
+        }else{
+            LoggerManager::log(LoggerManager::ERROR,
+                                    'Invalid config values|GoogleGetter',
+                                            ['config'=>$config]
+                              );
+            $this->dataBase->updateSourceReview($config['source_hash'], ['handled'=>'UNPROCESSABLE']);
+            $this->trigger = self::END_CODE;
         }
+
 
     }
 
@@ -150,7 +182,7 @@ class GoogleGetter  implements GetterInterface
     }
 
     /**
-     * Если происходит первая итерация цикла,то метод превращает массив в хэш-строку
+     * метод превращает массив в хэш-строку
      * для записи в специальную переменную
      * и записывает дату самого последнего по времени отзыва.
      */
@@ -169,11 +201,28 @@ class GoogleGetter  implements GetterInterface
     {
 
         $this->client->setAccessToken($this->mainData['config']['token_info']);
-
         if($this->client->isAccessTokenExpired()){
             $refreshToken = $this->client->getRefreshToken();
             $this->mainData['config']['token_info'] = $this->client->fetchAccessTokenWithRefreshToken($refreshToken);
         }
+    }
+
+    /**
+     * @param array $config
+     * @return bool
+     * Метод проверяет валидность конфигов
+     */
+    private function validateConfig(array $config):bool
+    {
+        $configIsValid = true;
+        $handledNotExist = !array_key_exists('handled', $config);
+        $trackNotExist = !array_key_exists('track', $config);//??????????????? maybeDeleted
+        $sourceConfigNotExist = !array_key_exists('config',$config);
+        if($handledNotExist || $trackNotExist || $sourceConfigNotExist){
+            $configIsValid = false;
+        }
+        return $configIsValid;
+
     }
 
     /**
@@ -201,7 +250,7 @@ class GoogleGetter  implements GetterInterface
      *
      * Метод подключается к сервисам гугл по данному $source.
      * Если имеется nextPageToken,то он используется,также формируется заголовок запроса с нужным токеном
-     * Возвращает декодированный ответ от GMB_API
+     * Устанавливает в $mainData ответ запроса
      */
     private function connectToPlatform():void
     {

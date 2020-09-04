@@ -3,11 +3,14 @@
 
 namespace parsing\platforms\topdealers;
 
+use parsing\DB\DatabaseShell;
 use parsing\factories\factory_interfaces\GetterInterface;
+use parsing\logger\LoggerManager;
 
 /**
  * Class TopDealersGetter
  * @package parsing\platforms\topdealers
+ *
  */
 
 class TopDealersGetter implements GetterInterface
@@ -15,32 +18,34 @@ class TopDealersGetter implements GetterInterface
    private const RESPONSES_URN  = 'responses/';
    private const MAIN_URL       = 'https://topdealers.ru';
    private const BAD_CONNECTION = '-666';                   //ответ при отсутствии соединения с донором
-   private const HALF_YEAR      = 15552000;
+
+   private $database;
 
     private $config;
     private $source;
     private $handled;
+    private $hash;
 
     private $iterator = 0;
     private $half_Year_Ago;
 
     private $MainPage;
     private $ResponsesPage;
-    private $FullResponsePage;
 
     private $last_date_review_db;
 
     private $mainData;
 
 
-    public function __construct()
+    public function __construct(DatabaseShell $database)
     {
-        $this->half_Year_Ago = time() - self::HALF_YEAR;
+        $this->half_Year_Ago = time() - self::HALF_YEAR_TIMESTAMP;
+        $this->database = $database;
     }
 
     /**
      * @return int|array
-     * Метод выполняет получает отзывы и в зависимости от флага handled применяет разные алгоритмы для получения отзывов
+     * Метод  получает отзывы и в зависимости от флага handled применяет разные алгоритмы для получения отзывов
      */
     public function getNextRecords()
     {
@@ -51,21 +56,18 @@ class TopDealersGetter implements GetterInterface
             $this->HTML_to_DOM($this->MainPage);
         }else{
             $this->mainData = self::END_CODE;
+
+            LoggerManager::log(LoggerManager::ERROR,
+                                    'Can not connect to site|TopdealersGetter',
+                                            ['source'=>$this->source]);
+            $this->database->updateSourceReview($this->hash, ['handled'=>'UNPROCESSABLE']);
         }
 
-        if($this->handled == 'NEW' && $this->mainData !== self::END_CODE){
-
-            $this->setMetaInfo();
-            $this->setReviews($this->half_Year_Ago);
-            $this->setSourceConfig($this->half_Year_Ago);
-
-        }elseif ($this->handled == 'HANDLE' && $this->mainData !== self::END_CODE){
-
-            $this->setMetaInfo();
+        if($this->handled == self::SOURCE_NEW && $this->mainData !== self::END_CODE){
+            $this->formMainData($this->half_Year_Ago);
+        }elseif ($this->handled == self::SOURCE_HANDLED && $this->mainData !== self::END_CODE){
             $this->parseConfig();
-            $this->setReviews($this->last_date_review_db);
-            $this->setSourceConfig($this->last_date_review_db);
-
+            $this->formMainData($this->last_date_review_db);
         }
 
         \phpQuery::unloadDocuments();
@@ -79,8 +81,17 @@ class TopDealersGetter implements GetterInterface
     public function setConfig($config)
     {
         $this->source  = $config['source'];
-        $this->handled = $config['handle'];
-        $this->config  = $config['config'];
+        $this->handled = $config['handled'];
+        $this->config  = json_decode($config['config'],true);
+        $this->hash = $config['source_hash'];
+
+    }
+
+    private  function formMainData(int $timeToCut):void
+    {
+        $this->setMetaInfo();
+        $this->setReviews($timeToCut);
+        $this->setSourceConfig($timeToCut);
     }
 
     /**
@@ -88,7 +99,7 @@ class TopDealersGetter implements GetterInterface
      */
     private function parseConfig():void
     {
-        $this->last_date_review_db = $this->config['last_review_date'];
+        $this->last_date_review_db = $this->config['last_review_time'];
     }
 
     /**
@@ -205,11 +216,11 @@ class TopDealersGetter implements GetterInterface
      */
     private function getFullReview(string $url):string
     {
-        $this->FullResponsePage = $this->getContent($url);
+        $FullResponsePage = $this->getContent($url);
 
-        if($this->FullResponsePage !== self::BAD_CONNECTION){
-            $this->HTML_to_DOM($this->FullResponsePage);
-            return $this->FullResponsePage->find('.info p')->text();
+        if($FullResponsePage !== self::BAD_CONNECTION){
+            $this->HTML_to_DOM($FullResponsePage);
+            return $FullResponsePage->find('.info p')->text();
         }
         return 'Нет полной страницы';
     }

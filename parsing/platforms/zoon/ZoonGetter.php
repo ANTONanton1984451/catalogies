@@ -24,9 +24,6 @@ class ZoonGetter implements GetterInterface {
 
     const EMPTY = '';
 
-    const TYPE_REVIEWS = 'reviews';
-    const TYPE_METARECORD = 'meta';
-
     const REVIEWS_LIMIT = 102;
 
     const QUERY_CONSTANT_PARAMETERS = "https://zoon.ru/js.php?area=service&action=CommentList&owner[]=organization&" .
@@ -51,7 +48,7 @@ class ZoonGetter implements GetterInterface {
             $this->status = $config['handled'];
             $this->metaRecord = $this->generateMetaRecord($config['source'], $config['source_hash']);
 
-            if ($this->status === self::STATUS_HANDLED) {
+            if ($this->status === self::SOURCE_HANDLED) {
                 $this->oldHash = json_decode($config["config"], true)['old_hash'];
             }
         }
@@ -67,7 +64,7 @@ class ZoonGetter implements GetterInterface {
 
         if ($incorrectHttpCode || $handledNotExist || $trackNotExist) {
 
-            $this->status = self::STATUS_UNPROCESSABLE;
+            $this->status = self::SOURCE_UNPROCESSABLE;
             (new DatabaseShell())->updateSourceReview($config['source_hash'], ['handled' => 'UNPROCESSABLE']);
             LoggerManager::log(LoggerManager::DEBUG, "Недостаточно данных для обработки ссылки", [$config]);
 
@@ -97,8 +94,10 @@ class ZoonGetter implements GetterInterface {
             $message = "Не удалось получить токен заведения";
             LoggerManager::log(LoggerManager::DEBUG, $message, [$source]);
 
-            $this->status = self::STATUS_UNPROCESSABLE;
+
+            $this->status = self::SOURCE_UNPROCESSABLE;
             (new DatabaseShell())->updateSourceReview($source_hash, ['handled' => 'UNPROCESSABLE']);
+
 
         } else {
             $this->addQueryParameters['organization'] = $organizationId;
@@ -122,15 +121,15 @@ class ZoonGetter implements GetterInterface {
     public function getNextRecords(){
 
         switch ($this->status) {
-            case self::STATUS_NEW:
+            case self::SOURCE_NEW:
                 $records = $this->parseNewSource();
                 break;
 
-            case self::STATUS_HANDLED:
+            case self::SOURCE_HANDLED:
                 $records = $this->parseHandledSource();
                 break;
 
-            case self::STATUS_UNPROCESSABLE:
+            case self::SOURCE_UNPROCESSABLE:
                 $records = $this->getEndCode();
                 break;
         }

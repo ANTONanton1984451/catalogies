@@ -6,37 +6,81 @@ namespace parsing\platforms\topdealers;
 
 use parsing\DB\DatabaseShell;
 use parsing\factories\factory_interfaces\ModelInterface;
+use parsing\services\TaskQueueController;
 
+/**
+ * Class TopDealersModel
+ * @package parsing\platforms\topdealers
+ */
 class TopDealersModel implements ModelInterface
 {
-    private $constInfo;
-    private $dataBase;
+    private const PLATFORM = 'topdealers';
 
-    public function __construct(DatabaseShell $db)
+    private $constInfo;
+    private $handled;
+    private $dataBase;
+    private $taskQueueController;
+
+    public function __construct(DatabaseShell $db,TaskQueueController $controller)
     {
         $this->dataBase = $db;
-        $this->constInfo['platform'] = 'topdealers';
+        $this->taskQueueController = $controller;
+        $this->constInfo['platform'] = self::PLATFORM;
+        $this->constInfo['is_answered'] = 'false';
     }
 
-
+    /**
+     * @param $data
+     * Метод в любом случае обновляет конфиги и метаданные,при наличии отзывов,кладёт их в БД
+     * Далее в зависимости от флага handled либо обновляет очередь,либо создаёт запись в очереди
+     */
     public function writeData($data)
     {
-        $this->insertReviews($data['reviews']);
+
         $this->updateConfig($data['config']);
         $this->updateMetaInfo($data['meta_info']);
+
+        if(!empty($data['review'])){
+            $this->insertReviews($data['reviews']);
+        }
+
+        if($this->handled === self::SOURCE_NEW){
+
+            $minimalDateReview = isset($data['reviews'][count($data['reviews'])-1]['date'])
+                                 ? $data['reviews'][count($data['reviews'])-1]['date'] : 0;
+
+            $this->insertTaskQueue(count($data['reviews']),
+                                   $minimalDateReview,
+                                   $this->constInfo['source_hash_key']);
+            $this->dataBase->updateSourceReview($this->constInfo['source_hash_key'],['handled'=>'HANDLED']);
+
+        }elseif ($this->handled === self::SOURCE_HANDLED){
+            $this->taskQueueController->updateTaskQueue($this->constInfo['source_hash_key']);
+        }
     }
 
-
+    /**
+     * @param $config
+     */
     public function setConfig($config)
     {
         $this->constInfo['source_hash_key'] = $config['source_hash'];
+        $this->handled = $config['handled'];
+
     }
 
+    /**
+     * @param array $reviews
+     */
     private function insertReviews(array $reviews):void
     {
         $this->dataBase->insertReviews($reviews,$this->constInfo);
     }
 
+    /**
+     * @param string $meta
+     *
+     */
     private function updateMetaInfo(string $meta):void
     {
         $this->dataBase->updateSourceReview(
@@ -45,7 +89,19 @@ class TopDealersModel implements ModelInterface
         );
     }
 
+    /**
+     * @param int $countReviews
+     * @param int $minimalDate
+     * @param string $hash
+     */
+    private function insertTaskQueue(int $countReviews,int $minimalDate,string $hash):void
+    {
+            $this->taskQueueController->insertTaskQueue($countReviews,$minimalDate,$hash);
+    }
 
+    /**
+     * @param array $config
+     */
     private function updateConfig(array $config):void
     {
         $config = json_encode($config);

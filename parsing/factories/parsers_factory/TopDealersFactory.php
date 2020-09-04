@@ -12,16 +12,17 @@ use parsing\factories\factory_interfaces\ParserFactoryInterfaces;
 use parsing\platforms\topdealers\TopDealersFilter;
 use parsing\platforms\topdealers\TopDealersGetter;
 use parsing\platforms\topdealers\TopDealersModel;
+use parsing\services\TaskQueueController;
 
 class TopDealersFactory implements ParserFactoryInterfaces
 {
     public function buildModel(): ModelInterface
     {
-        return new TopDealersModel(new DatabaseShell());
+        return new TopDealersModel(new DatabaseShell(),new TaskQueueController());
     }
     public function buildGetter(): GetterInterface
     {
-        return new TopDealersGetter();
+        return new TopDealersGetter(new DatabaseShell());
     }
     public function buildFilter(): FilterInterface
     {

@@ -6,43 +6,70 @@ namespace parsing\platforms\google;
 
 use parsing\DB\DatabaseShell;
 use parsing\factories\factory_interfaces\ModelInterface;
+use parsing\logger\LoggerManager;
+use parsing\services\TaskQueueController;
 
 class GoogleModel implements ModelInterface
 {
-    const HANDLED = 'HANDLED';
-    const NEW = 'NEW';
-    const ONE_DAY_IN_SEC = 86400;
-    const ONE_HOUR_SEC = 3600;
-    const BALANCE_COEFFICIENT = 4;
-    const PLATFORM = 'google';
+
+    private const PLATFORM = 'google';
+    private const CONFIG_NOT_EMPTY = true;
+    private const CONFIG_EMPTY = false;
 
     private $dataBase;
     private $handled;
     private $tempReviews;
     private $reviewCount = 0;
     private $source_hash;
+    private $queueController;
+    private $config_status;
 
-    public function __construct(DatabaseShell $dbShell)
+
+    public function __construct(DatabaseShell $dbShell, TaskQueueController $queueController)
     {
         $this->dataBase = $dbShell;
-
+        $this->queueController = $queueController;
     }
 
+    /**
+     * @param $data
+     * Управляющий метод для вызова метода обработки данных определённого вида(NEW|HANDLED)
+     */
     public function writeData($data)
     {
-       if($this->handled === self::NEW){
+       if($this->handled === self::SOURCE_NEW && $this->config_status === self::CONFIG_NOT_EMPTY){
            $this->writeNewData($data);
-       }elseif($this->handled === self::HANDLED){
+       }elseif($this->handled === self::SOURCE_HANDLED && $this->config_status === self::CONFIG_NOT_EMPTY){
            $this->writeHandledData($data);
        }
-
+        LoggerManager::log(LoggerManager::INFO,
+                            'Insert data|GoogleModel',
+                                    ['hash'=>$this->source_hash]);
     }
 
 
     public function setConfig($config)
+    {   if($this->validateConfig($config)){
+            $this->source_hash = $config['source_hash'];
+            $this->handled = $config['handled'];
+            $this->config_status = self::CONFIG_NOT_EMPTY;
+        }else{
+            LoggerManager::log(LoggerManager::ERROR,'Invalid config values|GoogleModel',
+                                ['config'=>$config]);
+        $this->config_status = self::CONFIG_EMPTY;
+        }
+
+    }
+
+    private function validateConfig(array $config):bool
     {
-        $this->source_hash = $config['source_hash'];
-        $this->handled = $config['handled'];
+        $isConfigValid = true;
+        $handledNotExist = !in_array($config['handled'],$config);
+        $hashNotExist = !in_array($config['source_hash'],$config);
+        if($handledNotExist || $hashNotExist){
+            $isConfigValid = false;
+        }
+        return $isConfigValid;
     }
 
     private function writeHandledData(array $data):void
@@ -54,8 +81,7 @@ class GoogleModel implements ModelInterface
         }else{
             $columns = ['source_meta_info'=>json_encode($data['meta'])];
             $this->dataBase->updateSourceReview($this->source_hash,$columns);
-            $parse_date_hours = round(time()/self::ONE_HOUR_SEC);
-            $this->dataBase->updateTaskQueue($this->source_hash,['last_parse_date'=>$parse_date_hours]);
+            $this->queueController->updateTaskQueue($this->source_hash);
         }
     }
 
@@ -68,50 +94,21 @@ class GoogleModel implements ModelInterface
             $this->updateConfig($data['config']);
 
         }else{
-            $columns = [
-                    'source_meta_info' => json_encode($data['meta']),
-                    'handled'=> self::HANDLED
-                    ];
+            $columns = [ 'source_meta_info' => json_encode($data['meta']),
+                         'handled'=> self::SOURCE_HANDLED];
+
             $this->dataBase->updateSourceReview($this->source_hash,$columns);
-            $coefficients = $this->calcCoefs();
-            $this->dataBase->insertTaskQueue(array_merge($coefficients,["source_hash_key"=>$this->source_hash]));
-
-            //todo::Сделать сервис расчёта коэфициентов
+            $this->queueController->insertTaskQueue($this->reviewCount,
+                                                    $this->tempReviews[count($this->tempReviews)-1]['date'],
+                                                    $this->source_hash);
         }
-    }
-
-
-    private function calcCoefs():array
-    {
-
-        $last_review_date_sec = $this->tempReviews[count($this->tempReviews)-1]['date'];
-        $last_review_date_day = (time() - $last_review_date_sec)/self::ONE_DAY_IN_SEC;
-        $last_review_date_day = round($last_review_date_day);
-
-        $review_per_day = $this->reviewCount/$last_review_date_day;
-
-        if ($review_per_day > 6) {
-            $review_per_day = 6 * self::BALANCE_COEFFICIENT;
-        } elseif ($review_per_day < 1) {
-            $review_per_day = 1 * self::BALANCE_COEFFICIENT;
-        } else {
-            $review_per_day = round($review_per_day) * self::BALANCE_COEFFICIENT;
-        }
-
-        $last_parse_date = round(time()/self::ONE_HOUR_SEC);
-        $a = 0;
-        return [
-            'last_parse_date'=>$last_parse_date,
-            'review_per_day'=>$review_per_day
-        ];
     }
 
     private function insertReviews(array $reviews):void
     {
-        $constInfo = [
-                        'source_hash_key'=>$this->source_hash,
-                        'platform'=>self::PLATFORM
-                     ];
+        $constInfo = ['source_hash_key'=>$this->source_hash,
+                      'platform'=>self::PLATFORM];
+
 
         $this->dataBase->insertReviews($reviews,$constInfo);
     }

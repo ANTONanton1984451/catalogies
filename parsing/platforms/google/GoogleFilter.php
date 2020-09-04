@@ -5,7 +5,7 @@ namespace parsing\platforms\google;
 
 
 use parsing\factories\factory_interfaces\FilterInterface;
-use parsing\platforms\Filter;
+
 
 /**
  * Class GoogleFilter
@@ -13,7 +13,6 @@ use parsing\platforms\Filter;
  */
 class GoogleFilter implements FilterInterface
 {
-  const LAST_ITERATION = 'last_iteration';
   private $buffer_info;
   private $buffer_info_temp;
 
@@ -46,16 +45,12 @@ class GoogleFilter implements FilterInterface
 
        return $this->buffer_info;
   }
-  public function setConfig($config)
-  {
-      // TODO: Implement setConfig() method.
-  }
-
-
-
 
     /**
      * Формирует отзывы к нормальному виду
+     * На самом деле фильтр берёт на себя немного функции Модели,что не очень хорошо,но пока всё работает отлично
+     * поэтому в ближайшее время менять тут ничего не стоит
+     * todo:Тудушка стоит для того,чтобы когда-то в будущем я это исправил
      */
   private function formReview():void
   {
@@ -67,12 +62,15 @@ class GoogleFilter implements FilterInterface
           $review['rating']       = $ratingInt;
           $review['date']         = strtotime($v['updateTime']);
           $review['tonal']        = $this->ratingToTonal($ratingInt);
-
-          // todo: Зачем перезаписывать?
           if(isset($v['comment'])){
               $review['text'] = $this->splitText($v['comment']);
           }else{
               $review['text'] = '';
+          }
+          if(isset($v['reviewReply'])){
+              $review['is_answered'] = 'true';
+          }else{
+              $review['is_answered'] = 'false';
           }
 
           $this->buffer_info['reviews'][] = $review;
@@ -99,7 +97,6 @@ class GoogleFilter implements FilterInterface
           case 'ONE':
               return 1;
           default:
-              // todo: Не забыть что-нибудь сделать с -1 в rating'e
               return -1;
       }
   }

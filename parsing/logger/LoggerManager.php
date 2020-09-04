@@ -77,7 +77,6 @@ class LoggerManager
             foreach ($context as &$v){
                 if(is_object($v)){
                     $v = addslashes(serialize($v));
-                    echo "Произошла сериализация";
                 }
             }
             self::$logger->$log_code_name($message,$context);

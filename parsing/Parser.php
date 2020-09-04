@@ -35,7 +35,6 @@ class Parser
 
         while ($this->status != self::MESSAGE_END) {
             $buffer = $this->getter->getNextRecords();
-
             if ($buffer === self::END_CODE) {
                 $this->status = self::MESSAGE_END;
                 continue;

@@ -35,7 +35,7 @@ class YellGetter implements GetterInterface
         $this->source =  $config['source'];
         $this->handled = $config['handled'];
 
-        if ($this->handled === self::STATUS_HANDLED) {
+        if ($this->handled === self::SOURCE_HANDLED) {
             $this->oldHash = json_decode($config['source_config'])['oldHash'];
         }
 

@@ -107,6 +107,10 @@ class MigrationsManager
                     "text" => [
                         "LONGTEXT"
                     ],
+                    "is_answered" => [
+                        "ENUM('true','false')",
+                        "NOT NULL"
+                    ],
                     "rating" => [
                         "TINYINT(2)",
                         "NOT NULL"
@@ -161,10 +165,15 @@ class MigrationsManager
     }
 
     public function seedDatabase() {
-//        $sources = [
-//            'https://volgograd.zoon.ru/restaurants/sushi-bar_kapuchino_tokio_v_krasnooktyabrskom_rajone/',
-//            'https://volgograd.zoon.ru/restaurants/kafe_3_sushi_na_ulitse_karbysheva/',
-//        ];
+////        $sources = [
+////            'https://volgograd.zoon.ru/restaurants/sushi-bar_kapuchino_tokio_v_krasnooktyabrskom_rajone/',
+////            'https://volgograd.zoon.ru/restaurants/kafe_3_sushi_na_ulitse_karbysheva/',
+////        ];
+//            $sources = [
+//              'https://topdealers.ru/brands/ford/moskva/525/',
+//              'https://topdealers.ru/brands/ford/sankt-peterburg/540/'
+//            ];
+
         $sources_google = [
             [
                 'source'=>'accounts/101148201288830043360/locations/5839617167530752762',
@@ -198,7 +207,7 @@ class MigrationsManager
 //            $db = new DatabaseShell();
 //            $db->insertSourceReview([
 //                'source_hash' => md5($source),
-//                'platform' => 'zoon',
+//                'platform' => 'topdealers',
 //                'source' => $source,
 //                'actual' => 'ACTIVE',
 //                'track' => 'ALL',
