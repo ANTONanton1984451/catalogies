@@ -17,16 +17,21 @@ class TopDealersModel implements ModelInterface
     private const PLATFORM = 'topdealers';
 
     private $constInfo;
+
     private $handled;
+    private $track;
+
     private $dataBase;
     private $taskQueueController;
+
+    private $notifications;
 
     public function __construct(DatabaseShell $db,TaskQueueController $controller)
     {
         $this->dataBase = $db;
         $this->taskQueueController = $controller;
         $this->constInfo['platform'] = self::PLATFORM;
-        $this->constInfo['is_answered'] = 'false';
+        $this->constInfo['is_answered'] = false;
     }
 
     /**
@@ -42,16 +47,18 @@ class TopDealersModel implements ModelInterface
 
         if(!empty($data['review'])){
             $this->insertReviews($data['reviews']);
+            $this->setNotifications($data['reviews']);
         }
 
         if($this->handled === self::SOURCE_NEW){
 
-            $minimalDateReview = isset($data['reviews'][count($data['reviews'])-1]['date'])
+            $minimalDateReview = isset($data['reviews'])
                                  ? $data['reviews'][count($data['reviews'])-1]['date'] : 0;
 
             $this->insertTaskQueue(count($data['reviews']),
                                    $minimalDateReview,
                                    $this->constInfo['source_hash_key']);
+
             $this->dataBase->updateSourceReview($this->constInfo['source_hash_key'],['handled'=>'HANDLED']);
 
         }elseif ($this->handled === self::SOURCE_HANDLED){
@@ -67,6 +74,39 @@ class TopDealersModel implements ModelInterface
         $this->constInfo['source_hash_key'] = $config['source_hash'];
         $this->handled = $config['handled'];
 
+    }
+
+    /**
+     * @param array $reviews
+     * собирает отзывы для уведомления в отдельный массив
+     */
+    private function setNotifications(array $reviews):void
+    {
+        switch ($this->track){
+            case self::TRACK_ALL:
+                $this->notifications = array_merge($this->notifications,$reviews);
+                break;
+            case self::TRACK_NEGATIVE:
+                $this->notifications = array_merge($this->notifications,$this->catchNegative($reviews));
+                break;
+            default:
+                $this->notifications = [];
+        }
+    }
+
+    /**
+     * @param array $reviews
+     * @return array
+     */
+    private function catchNegative(array $reviews):array
+    {
+        $negativeReviews = [];
+        foreach ($reviews as $review){
+            if($review['tonal'] === self::TONAL_NEGATIVE){
+                $negativeReviews[] = $review;
+            }
+        }
+        return $negativeReviews;
     }
 
     /**

@@ -16,6 +16,14 @@ interface ConstantInterfaces
 
     const HALF_YEAR_TIMESTAMP = 15552000;
 
+    const TRACK_ALL = 'ALL';
+    const TRACK_NEGATIVE = 'NEGATIVE';
+    const TRACK_NONE = 'NONE';
+
+    const TONAL_NEGATIVE = 'NEGATIVE';
+    const TONAL_POSITIVE = 'POSITIVE';
+    const TONAL_NEUTRAL  = 'NEUTRAL';
+
     const TYPE_REVIEWS = true;
     const TYPE_METARECORD = false;
 }
