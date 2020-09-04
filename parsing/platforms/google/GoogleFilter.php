@@ -68,9 +68,9 @@ class GoogleFilter implements FilterInterface
               $review['text'] = '';
           }
           if(isset($v['reviewReply'])){
-              $review['is_answered'] = 'true';
+              $review['is_answered'] = true;
           }else{
-              $review['is_answered'] = 'false';
+              $review['is_answered'] = false;
           }
 
           $this->buffer_info['reviews'][] = $review;
@@ -110,13 +110,13 @@ class GoogleFilter implements FilterInterface
   private function ratingToTonal(int $rating):string
   {
       if($rating > 0 && $rating < 4 ){
-          return 'NEGATIVE';
+          return self::TONAL_NEGATIVE;
       }
       if($rating === 4){
-          return 'NEUTRAL';
+          return self::TONAL_NEUTRAL;
       }
       if($rating === 5){
-          return 'POSITIVE';
+          return self::TONAL_POSITIVE;
       }
       return 'UNDEFINED';
   }

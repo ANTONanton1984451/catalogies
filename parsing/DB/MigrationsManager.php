@@ -108,7 +108,7 @@ class MigrationsManager
                         "LONGTEXT"
                     ],
                     "is_answered" => [
-                        "ENUM('true','false')",
+                        "BOOLEAN",
                         "NOT NULL"
                     ],
                     "rating" => [
@@ -165,6 +165,7 @@ class MigrationsManager
     }
 
     public function seedDatabase() {
+
 
 
         $platforms = [
@@ -252,17 +253,18 @@ class MigrationsManager
 //
 //        foreach ($google_links as $source){
 //
+
 //            $db = new DatabaseShell();
 //            $db->insertSourceReview([
-//                'source_hash' => md5($source),
-//                'platform' => 'topdealers',
-//                'source' => $source,
+//                'source_hash' => md5($source['source']),
+//                'platform' => 'google',
+//                'source' => $source['source'],
 //                'actual' => 'ACTIVE',
 //                'track' => 'ALL',
-//                'handled' => 'NEW'
+//                'handled' => 'NEW',
+//                'source_config'=>json_encode($source['config'])
 //            ]);
 //        }
-
 
     }
 
