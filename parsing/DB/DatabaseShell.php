@@ -1,6 +1,7 @@
 <?php
 
 // todo: singleton?
+// todo: Можно добавить поле isAnswered в review
 
 namespace parsing\DB;
 
