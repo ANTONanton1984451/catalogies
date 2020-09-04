@@ -24,7 +24,7 @@ class TaskQueueController
         ]);
     }
 
-    public function updateTaskQueue(int $sourceHash) {
+    public function updateTaskQueue(string $sourceHash) {
         (new DatabaseShell())->updateTaskQueue($sourceHash, [
             'last_parse_date' => time() / 3600
         ]);

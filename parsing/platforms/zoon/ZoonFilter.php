@@ -4,6 +4,7 @@ namespace parsing\platforms\zoon;
 
 use parsing\factories\factory_interfaces\FilterInterface;
 use phpQuery;
+use stdClass;
 
 class ZoonFilter implements FilterInterface
 {
@@ -18,12 +19,11 @@ class ZoonFilter implements FilterInterface
     /**
      * Функция обрабатывает записи с отзывами, а записи с мета-данными пропускает дальше.
      *
-     * @param $buffer array|object
-     * @return array
+     * @param $buffer
+     * @return array|object
      */
-    public function clearData($buffer) : array
-    {
-        if ($buffer['type'] == self::TYPE_REVIEWS) {
+    public function clearData($buffer) {
+        if ($buffer->type == self::TYPE_REVIEWS) {
             $buffer = $this->handlingReviews($buffer);
         }
 
@@ -69,8 +69,7 @@ class ZoonFilter implements FilterInterface
      *
      * @param $document
      */
-    private function checkFormat($document): void
-    {
+    private function checkFormat($document): void {
         if ($document->find('.comment-container.js-comment-container')->text() === '') {
             $this->format = self::FORMAT_HARD;
         } elseif ($document->find('script')->text() === '') {
@@ -86,8 +85,7 @@ class ZoonFilter implements FilterInterface
      * @param $document
      * @return string
      */
-    private function handleHardReview($document): string
-    {
+    private function handleHardReview($document): string {
         $result = '';
         $reviews = $document->find('script');
 
@@ -111,8 +109,7 @@ class ZoonFilter implements FilterInterface
      * @param $document
      * @return string
      */
-    private function handleMixReview($document): string
-    {
+    private function handleMixReview($document): string {
         $result = '';
 
         $reviews = $document->find('li');
@@ -155,7 +152,7 @@ class ZoonFilter implements FilterInterface
 
             $identifier = $pq->find('span.name')->text();
 
-            $result[] = [
+            $result [] = [
                 'text' => $text,
                 'date' => $date,
                 'identifier' => $identifier
@@ -169,8 +166,7 @@ class ZoonFilter implements FilterInterface
      * @param $date string
      * @return false|int
      */
-    private function formatDate(string $date)
-    {
+    private function formatDate(string $date) {
         $split_date = preg_split("/\s+/", $date);
         $split_date[2] = $this->swapMonthFormat($split_date[2]);
         $result = array_slice($split_date, 1, 3);

@@ -78,10 +78,10 @@ class GoogleGetter  implements GetterInterface
                 $this->checkResponse();
         }
 
-        if($this->handle === self::STATUS_NEW && $this->trigger === self::CONTINUE){
+        if($this->handle === self::SOURCE_NEW && $this->trigger === self::CONTINUE){
             $this->formData($this->halfYearAgo);
 
-        }elseif($this->handle == self::STATUS_HANDLED && $this->trigger === self::CONTINUE){
+        }elseif($this->handle == self::SOURCE_HANDLED && $this->trigger === self::CONTINUE){
             $lastReviewFromSource = $this->arrayReviewToMd5Hash();
 
             if($lastReviewFromSource === $this->mainData['config']['last_review_hash']){
@@ -137,7 +137,7 @@ class GoogleGetter  implements GetterInterface
         $this->handle = $config['handled'];
         $this->mainData['config'] = $decode_config;
 
-        if($this->handle === self::STATUS_HANDLED){
+        if($this->handle === self::SOURCE_HANDLED){
             $this->last_review_db = $decode_config['last_review_date'];
         }
 

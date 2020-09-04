@@ -7,11 +7,13 @@ use phpQuery;
 
 class YellGetter implements GetterInterface
 {
-    const STATUS_ACTIVE = 0;
-    const STATUS_END = 1;
+    const STATUS_ACTIVE = true;
+    const STATUS_END = false;
 
     const HOST = 'https://www.yell.ru/company/reviews/?';
-    const EMPTY_RECORD = 64;
+
+    const EMPTY_RECORD_LENGTH = 64;
+    const FIRST_PAGE = 1;
 
     private $status = self::STATUS_ACTIVE;
     private $activePage = 1;
@@ -35,8 +37,8 @@ class YellGetter implements GetterInterface
         $this->source =  $config['source'];
         $this->handled = $config['handled'];
 
-        if ($this->handled === self::STATUS_HANDLED) {
-            $this->oldHash = json_decode($config['source_config'])['oldHash'];
+        if ($this->handled === self::SOURCE_HANDLED) {
+            $this->oldHash = json_decode($config['source_config'])->old_hash;
         }
 
         $this->getOrganizationId();
@@ -64,7 +66,7 @@ class YellGetter implements GetterInterface
         if ($this->status === self::STATUS_ACTIVE) {
             $records = $this->getReviews();
 
-            if (strlen($records) === self::EMPTY_RECORD) {
+            if (strlen($records) === self::EMPTY_RECORD_LENGTH) {
                 $records = $this->getMetaInfo();
                 $this->status = self::STATUS_END;
             }
@@ -74,20 +76,20 @@ class YellGetter implements GetterInterface
     }
 
     private function getReviews() {
-        if ($this->handled === 'NEW') {
+        if ($this->handled === self::SOURCE_NEW) {
             $records = file_get_contents(self::HOST . http_build_query($this->queryInfo));
 
-            if ($this->activePage == 1) {
+            if ($this->activePage == self::FIRST_PAGE) {
                 $this->metaRecord['old_hash'] = md5($records);
             }
 
             $this->queryInfo['page'] = $this->activePage++;
         }
 
-        if ($this->handled === 'HANDLED') {
+        if ($this->handled === self::SOURCE_HANDLED) {
             $records = file_get_contents(self::HOST . http_build_query($this->queryInfo));
             if ($this->isEqualsHash(md5($records))) {
-                $records = self::EMPTY_RECORD;
+                $records = self::EMPTY_RECORD_LENGTH;
             }
         }
 
@@ -104,5 +106,11 @@ class YellGetter implements GetterInterface
 
     private function isEqualsHash(string $md5): bool {
         return $this->oldHash === $md5;
+    }
+
+    private function saveFirstPage($records) {
+        var_dump($records);
+        exit();
+        $this->metaRecord->old_hash = md5($records);
     }
 }

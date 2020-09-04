@@ -69,7 +69,7 @@ class FlampGetter implements GetterInterface
             $this->halfYearAgo = time() - self::HALF_YEAR_TIMESTAMP;
             $this->metaRecord = $this->generateMetaRecord($config['source'], $config['source_hash']);
 
-            if ($this->status === self::STATUS_HANDLED) {
+            if ($this->status === self::SOURCE_HANDLED) {
                 $this->oldHash = json_decode($config["config"], true)['old_hash'];
             }
         }
@@ -83,7 +83,7 @@ class FlampGetter implements GetterInterface
         $trackNotExist = !array_key_exists("track", $config);
 
         if ($incorrectHttpCode || $handledNotExist || $trackNotExist) {
-            $this->status = self::STATUS_UNPROCESSABLE;
+            $this->status = self::SOURCE_UNPROCESSABLE;
             (new DatabaseShell())->updateSourceReview($config['source_hash'], ['handled' => 'UNPROCESSABLE']);
 
             $message = "Недостаточно данных для обработки ссылки";
@@ -105,7 +105,7 @@ class FlampGetter implements GetterInterface
             $message = "Не удалось получить токен заведения";
             LoggerManager::log(LoggerManager::DEBUG, $message, [$source]);
 
-            $this->status = self::STATUS_UNPROCESSABLE;
+            $this->status = self::SOURCE_UNPROCESSABLE;
             (new DatabaseShell())->updateSourceReview($source_hash, ['handled' => 'UNPROCESSABLE']);
         }
 
@@ -121,15 +121,15 @@ class FlampGetter implements GetterInterface
 
     public function getNextRecords() {
         switch ($this->status) {
-            case self::STATUS_NEW:
+            case self::SOURCE_NEW:
                 $records = $this->parseNewSource();
                 break;
 
-            case self::STATUS_HANDLED:
+            case self::SOURCE_HANDLED:
                 $records = $this->parseHandledSource();
                 break;
 
-            case self::STATUS_UNPROCESSABLE:
+            case self::SOURCE_UNPROCESSABLE:
                 $records = $this->getEndCode();
                 break;
         }
@@ -138,10 +138,7 @@ class FlampGetter implements GetterInterface
     }
 
     private function parseNewSource() {
-        if ($this->isEnd == true) {
-            $records = $this->getEndCode();
-
-        } else {
+        if ($this->isEnd != true) {
             if ($this->nextLink === 0) {
                 $records = $this->getReviews(self::FIRST_RECORDS);
             } else {
@@ -157,6 +154,9 @@ class FlampGetter implements GetterInterface
                 $records->type = self::TYPE_METARECORD;
                 $this->isEnd = true;
             }
+
+        } else {
+            $records = $this->getEndCode();
         }
 
         return $records;
