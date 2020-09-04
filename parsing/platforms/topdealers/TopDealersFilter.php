@@ -108,9 +108,4 @@ class TopDealersFilter implements FilterInterface
     {
         $this->mainData['config'] = $config;
     }
-
-    public function setConfig($config)
-    {
-        // TODO: Implement setConfig() method.
-    }
 }

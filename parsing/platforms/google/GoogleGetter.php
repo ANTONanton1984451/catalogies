@@ -160,6 +160,7 @@ class GoogleGetter  implements GetterInterface
             $this->handle = $config['handled'];
             $this->mainData['config'] = $decode_config;
 
+
             if($this->handle === self::SOURCE_HANDLED){
                 $this->last_review_db = $decode_config['last_review_date'];
             }
@@ -170,6 +171,7 @@ class GoogleGetter  implements GetterInterface
                               );
             $this->dataBase->updateSourceReview($config['source_hash'], ['handled'=>'UNPROCESSABLE']);
             $this->trigger = self::END_CODE;
+
         }
 
 

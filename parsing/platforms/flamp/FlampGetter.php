@@ -8,6 +8,8 @@
 
 // todo: Переписать getReviews
 
+// todo: После срабатывания isOverHalfYear нужно сначала доставить отзывы, а потом еще одна итерация
+
 namespace parsing\platforms\flamp;
 
 use parsing\DB\DatabaseShell;
@@ -46,7 +48,7 @@ class FlampGetter implements GetterInterface
     private $isEnd = false;
     private $isReviewsSended = false;
 
-    const LIMIT_REVIEWS = 5;
+    const LIMIT_REVIEWS = 50;
     const HALF_YEAR_TIMESTAMP = 15724800;
 
     const FIRST_RECORDS = true;
@@ -69,7 +71,7 @@ class FlampGetter implements GetterInterface
             $this->halfYearAgo = time() - self::HALF_YEAR_TIMESTAMP;
             $this->metaRecord = $this->generateMetaRecord($config['source'], $config['source_hash']);
 
-            if ($this->status === self::STATUS_HANDLED) {
+            if ($this->status === self::SOURCE_HANDLED) {
                 $this->oldHash = json_decode($config["config"], true)['old_hash'];
             }
         }
@@ -83,7 +85,7 @@ class FlampGetter implements GetterInterface
         $trackNotExist = !array_key_exists("track", $config);
 
         if ($incorrectHttpCode || $handledNotExist || $trackNotExist) {
-            $this->status = self::STATUS_UNPROCESSABLE;
+            $this->status = self::SOURCE_UNPROCESSABLE;
             (new DatabaseShell())->updateSourceReview($config['source_hash'], ['handled' => 'UNPROCESSABLE']);
 
             $message = "Недостаточно данных для обработки ссылки";
@@ -105,31 +107,34 @@ class FlampGetter implements GetterInterface
             $message = "Не удалось получить токен заведения";
             LoggerManager::log(LoggerManager::DEBUG, $message, [$source]);
 
-            $this->status = self::STATUS_UNPROCESSABLE;
+            $this->status = self::SOURCE_UNPROCESSABLE;
             (new DatabaseShell())->updateSourceReview($source_hash, ['handled' => 'UNPROCESSABLE']);
         }
 
-        $countReviews = $document->find('div.filial-rating__value.filial-rating__value--5')->text();
-        $averageMark = $document->find('div.hg-row__side.t-h3')->text();
+
+
+        $averageMark = $document->find('div.filial-rating__value')->text();
+        $countReviews = $document->find('div.hg-row__side.t-h3')->text();
 
         $metaRecord = new stdClass();
         $metaRecord->count_reviews = trim($countReviews);
         $metaRecord->average_mark = trim($averageMark);
+        $metaRecord->type = self::TYPE_METARECORD;
 
         return $metaRecord;
     }
 
     public function getNextRecords() {
         switch ($this->status) {
-            case self::STATUS_NEW:
+            case self::SOURCE_NEW:
                 $records = $this->parseNewSource();
                 break;
 
-            case self::STATUS_HANDLED:
+            case self::SOURCE_HANDLED:
                 $records = $this->parseHandledSource();
                 break;
 
-            case self::STATUS_UNPROCESSABLE:
+            case self::SOURCE_UNPROCESSABLE:
                 $records = $this->getEndCode();
                 break;
         }
@@ -138,25 +143,26 @@ class FlampGetter implements GetterInterface
     }
 
     private function parseNewSource() {
-        if ($this->isEnd == true) {
-            $records = $this->getEndCode();
-
-        } else {
+        if ($this->isEnd != true) {
             if ($this->nextLink === 0) {
                 $records = $this->getReviews(self::FIRST_RECORDS);
             } else {
                 $records = $this->getReviews(self::OTHER_RECORDS);
             }
 
-            $records->type = self::TYPE_REVIEWS;
-
-            // todo: После срабатывания isOverHalfYear нужно сначала доставить отзывы, а потом еще одна итерация
-
-            if ($this->isOverHalfYear($records)) {
+            if ($this->isReviewsSended == true) {
                 $records = $this->getMetaRecord();
-                $records->type = self::TYPE_METARECORD;
                 $this->isEnd = true;
             }
+
+            if ($records->type === self::TYPE_REVIEWS) {
+                if ($this->isOverHalfYear($records)) {
+                    $this->isReviewsSended = true;
+                }
+            }
+
+        } else {
+            $records = $this->getEndCode();
         }
 
         return $records;
@@ -168,11 +174,9 @@ class FlampGetter implements GetterInterface
 
             if ($this->isEqualsHash(md5(json_encode($records))) || $this->isReviewsSended == true) {
                 $records = $this->getMetaRecord();
-                $records['type'] = self::TYPE_METARECORD;
                 $this->isEnd = true;
 
             } else {
-                $records['type'] = self::TYPE_REVIEWS;
                 $this->isReviewsSended = true;
             }
 
@@ -194,7 +198,13 @@ class FlampGetter implements GetterInterface
         }
 
         $records = $response->body;
-        $this->nextLink = $response->body->next_link;
+        $records->type = self::TYPE_REVIEWS;
+
+        if (isset($response->body->next_link)) {
+            $this->nextLink = $response->body->next_link;
+        } else {
+            $this->isReviewsSended = true;
+        }
 
         return $records;
     }

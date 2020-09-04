@@ -82,6 +82,7 @@ class TopDealersGetter implements GetterInterface
     {
         $this->source  = $config['source'];
         $this->handled = $config['handled'];
+
         $this->config  = json_decode($config['config'],true);
         $this->hash = $config['source_hash'];
 
@@ -92,6 +93,7 @@ class TopDealersGetter implements GetterInterface
         $this->setMetaInfo();
         $this->setReviews($timeToCut);
         $this->setSourceConfig($timeToCut);
+
     }
 
     /**

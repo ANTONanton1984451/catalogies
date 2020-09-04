@@ -40,6 +40,7 @@ class Parser
                 continue;
             }
 
+
             $buffer = $this->filter->clearData($buffer);
             $this->model->writeData($buffer);
         }

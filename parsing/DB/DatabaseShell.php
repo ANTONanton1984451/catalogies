@@ -28,6 +28,7 @@ class DatabaseShell
     public function getSources(int $limit , string $handled_flag , array $platforms = []) : array {
         if($handled_flag === 'NEW'){
             $sources = $this->getNewSources($limit);
+
         }elseif ($handled_flag === 'HANDLED'){
             $sources = $this->getActualSources($limit,$platforms);
         }
@@ -99,9 +100,9 @@ class DatabaseShell
 
     // Work with Review
     public function insertReviews(array $reviews, array $constInfo = []) {
-        foreach ($reviews as $review) {
-            $this->database->insert("review", array_merge($review, $constInfo));
-        }
+            foreach ($reviews as $review) {
+                $this->database->insert("review", array_merge($review, $constInfo));
+            }
     }
 
     // Work with Source Review
