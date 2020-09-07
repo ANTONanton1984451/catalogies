@@ -3,16 +3,16 @@
 
 namespace parsing;
 
+use parsing\factories\factory_interfaces\ConstantInterfaces;
 use parsing\factories\factory_interfaces\FilterInterface;
 use parsing\factories\factory_interfaces\GetterInterface;
 use parsing\factories\factory_interfaces\ModelInterface;
 
-class Parser
+class Parser implements ConstantInterfaces
 {
     const MESSAGE_END = 0;
     const MESSAGE_START = 1;
 
-    const END_CODE = 42;
 
     private $status = self::MESSAGE_START;
 
@@ -22,7 +22,7 @@ class Parser
 
     private $config;
 
-    private $notifies = [];
+    private $notifications = [];
 
     public function __construct($config) {
         $this->config = $config;
@@ -44,7 +44,11 @@ class Parser
             $this->model->writeData($buffer);
         }
 
+
         echo "I'm parsed this source --> " . $this->config['source'] . "\n";
+
+        $this->notifications = $this->model->getNotifications();
+
     }
 
     public function setGetter(GetterInterface $getter): void {
@@ -60,6 +64,6 @@ class Parser
     }
 
     public function generateJsonMessage() {
-        return json_encode($this->notifies);
+        return json_encode($this->notifications);
     }
 }

@@ -23,8 +23,8 @@ class TopDealersModel implements ModelInterface
 
     private $dataBase;
     private $taskQueueController;
-
-    private $notifications;
+    //todo:Нужно продумать момент,когда ссылка ломанная
+    private $notifications = [];
 
     public function __construct(DatabaseShell $db,TaskQueueController $controller)
     {
@@ -45,13 +45,12 @@ class TopDealersModel implements ModelInterface
         $this->updateConfig($data['config']);
         $this->updateMetaInfo($data['meta_info']);
 
-        if(!empty($data['review'])){
-            $this->insertReviews($data['reviews']);
+        if(!empty($data['reviews'])){
             $this->setNotifications($data['reviews']);
         }
 
         if($this->handled === self::SOURCE_NEW){
-
+            $this->notifications = $data['meta_info'];
             $minimalDateReview = isset($data['reviews'])
                                  ? $data['reviews'][count($data['reviews'])-1]['date'] : 0;
 
@@ -62,6 +61,9 @@ class TopDealersModel implements ModelInterface
             $this->dataBase->updateSourceReview($this->constInfo['source_hash_key'],['handled'=>'HANDLED']);
 
         }elseif ($this->handled === self::SOURCE_HANDLED){
+            if(!empty($data['reviews'])){
+                $this->setNotifications($data['reviews']);
+            }
             $this->taskQueueController->updateTaskQueue($this->constInfo['source_hash_key']);
         }
     }
@@ -95,6 +97,14 @@ class TopDealersModel implements ModelInterface
     }
 
     /**
+     * @return array
+     */
+    public function getNotifications(): array
+    {
+        return $this->notifications;
+    }
+
+    /**
      * @param array $reviews
      * @return array
      */
@@ -121,11 +131,11 @@ class TopDealersModel implements ModelInterface
      * @param string $meta
      *
      */
-    private function updateMetaInfo(string $meta):void
+    private function updateMetaInfo(array $meta):void
     {
         $this->dataBase->updateSourceReview(
             $this->constInfo['source_hash_key'],
-            ['source_meta_info'=>$meta]
+            ['source_meta_info'=>json_encode($meta)]
         );
     }
 

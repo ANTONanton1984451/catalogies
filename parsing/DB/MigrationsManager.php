@@ -46,7 +46,8 @@ class MigrationsManager
         }
     }
 
-    private function createTable($name) {
+    private function createTable($name)
+    {
 
         switch ($name) {
             case self::SOURCE_REVIEW:
@@ -204,17 +205,18 @@ class MigrationsManager
         ];
 
         foreach ($platforms as $platform) {
+
             $sources = $platform . "_links";
 
             foreach ($$sources as $source) {
                 $db = new DatabaseShell();
                 $db->insertSourceReview([
-                    'source_hash'   => md5($source),
-                    'platform'      => $platform,
-                    'source'        => $source,
-                    'actual'        => 'ACTIVE',
-                    'track'         => 'ALL',
-                    'handled'       => 'NEW'
+                    'source_hash' => md5($source),
+                    'platform' => $platform,
+                    'source' => $source,
+                    'actual' => 'ACTIVE',
+                    'track' => 'ALL',
+                    'handled' => 'NEW'
                 ]);
             }
         }
@@ -260,19 +262,20 @@ class MigrationsManager
 //                'source_config'=>json_encode($source['config'])
 //            ]);
 //        }
-
     }
 
-    private function getConnection() {
-        return new Medoo([
-            'database_type' => 'mysql',
-            'database_name' => 'test',
-            'server' => 'localhost',
-            'username' => 'borland',
-            'password' => 'attache1974',
-            'option' => [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-            ]
-        ]);
-    }
+
+    private function getConnection()
+        {
+            return new Medoo([
+                'database_type' => 'mysql',
+                'database_name' => DATABASE,
+                'server' => 'localhost',
+                'username' => DB_USER,
+                'password' => DB_PASSWORD,
+                'option' => [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+                ]
+            ]);
+        }
 }

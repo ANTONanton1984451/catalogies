@@ -61,8 +61,8 @@ class DatabaseShell
             SELECT ($now -`last_parse_date`) + `review_per_day` as priority,
                 `task_queue`.`source_hash_key` as source_hash,
                 `source_config` as config,
-                `handled` as handled,   
-                `source` as source,
+                `handled`,
+                `source`,
                 `track`,
                 `platform`
             FROM `task_queue`
@@ -83,7 +83,8 @@ class DatabaseShell
      * @param int $limit
      * @return array
      */
-    public function getNewSources(int $limit) : array {
+    public function getNewSources(int $limit) : array
+    {
         return $this->database->select('source_review', [
             'source_hash',
             'platform',
@@ -100,19 +101,24 @@ class DatabaseShell
 }
 
     // Work with Review
-    public function insertReviews(array $reviews, array $constInfo = []) {
-            foreach ($reviews as $review) {
-                $this->database->insert("review", array_merge($review, $constInfo));
-            }
+    public function insertReviews(array $reviews, array $constInfo = []):int
+    {
+        foreach ($reviews as &$review) {
+            $review = array_merge($review,$constInfo);
+        }
+       return $this->database->insert("review", $reviews)->rowCount();
     }
 
     // Work with Source Review
-    public function insertSourceReview(array $source_review) {
-        $this->database->insert('source_review', $source_review);
+    public function insertSourceReview(array $source_review):int
+    {
+      return  $this->database->insert('source_review', $source_review)->rowCount();
     }
 
-    public function updateSourceReview($source_hash, $updatedRecords) {
-        $this->database->update("source_review", $updatedRecords, ["source_hash" => $source_hash]);
+    public function updateSourceReview($source_hash, $updatedRecords):int
+    {
+      $pdoStatement = $this->database->update("source_review", $updatedRecords, ["source_hash" => $source_hash]);
+      return $pdoStatement->rowCount();
     }
 
     /**
@@ -120,18 +126,22 @@ class DatabaseShell
      * если не имеется возможности гарантировать целостность данных
      *
      * @param $source_hash_key
+     * @return int
      */
-    public function rollback($source_hash_key) {
-        $this->database->delete("review", ['source_hash_key' => $source_hash_key]);
+    public function rollback($source_hash_key) : int
+    {
+        $pdoStatement = $this->database->delete("review", ['source_hash_key' => $source_hash_key]);
+        return $pdoStatement->rowCount();
     }
 
 
-    public function insertTaskQueue(array $task) : void {
-        $this->database->insert("task_queue", $task);
+    public function insertTaskQueue(array $task):int {
+        return $this->database->insert("task_queue", $task)->rowCount();
     }
 
-    public function updateTaskQueue($source_hash_key, array $task) : void {
-        $this->database->update("task_queue", $task, ["source_hash_key" => $source_hash_key] );
+    public function updateTaskQueue($source_hash_key, array $task) : int {
+      $pdoStatement = $this->database->update("task_queue", $task, ["source_hash_key" => $source_hash_key]);
+      return $pdoStatement->rowCount();
     }
 
     /**
@@ -154,10 +164,10 @@ class DatabaseShell
     private function getConnection() {
         return new Medoo([
             'database_type' => 'mysql',
-            'database_name' => 'test',
+            'database_name' => DATABASE,
             'server' => 'localhost',
-            'username' => 'borland',
-            'password' => 'attache1974',
+            'username' => DB_USER,
+            'password' => DB_PASSWORD,
             'option' => [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
             ]

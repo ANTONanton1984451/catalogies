@@ -50,6 +50,7 @@ class TopDealersGetter implements GetterInterface
      */
     public function getNextRecords()
     {
+        $this->iterator++;
         $this->checkIteration();
         $this->MainPage = $this->getContent($this->source);
 
@@ -242,7 +243,7 @@ class TopDealersGetter implements GetterInterface
             }else{
                 $data=array_slice($data,0,$i);
                 $this->mainData['reviews'] = $data;
-                return;
+                break;
             }
 
         }
@@ -263,8 +264,6 @@ class TopDealersGetter implements GetterInterface
      */
     private function checkIteration():void
     {
-        $this->iterator++;
-
         if($this->iterator !== 1){
             $this->mainData = self::END_CODE;
         }

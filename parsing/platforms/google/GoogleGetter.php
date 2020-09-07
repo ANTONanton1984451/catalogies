@@ -27,7 +27,6 @@ class GoogleGetter  implements GetterInterface
     private $dataBase;
 
     protected $source;
-    protected $track;//maybe deleted?
     protected $handle;
 
     private $trigger = self::CONTINUE;
@@ -177,12 +176,6 @@ class GoogleGetter  implements GetterInterface
 
     }
 
-
-    public function getNotifications()
-    {
-        // TODO: Implement getNotifications() method.
-    }
-
     /**
      * метод превращает массив в хэш-строку
      * для записи в специальную переменную
@@ -243,7 +236,7 @@ class GoogleGetter  implements GetterInterface
             if($timeStamp <= $timeBreak ){
                 $data=array_slice($data,0,$i);
                 $this->mainData['platform_info']['reviews'] = $data;
-                return;
+                break;
             }
         }
     }
@@ -284,6 +277,11 @@ class GoogleGetter  implements GetterInterface
     private function arrayReviewToMd5Hash(): string
     {
             $lastUpdateReview = $this->mainData['platform_info']['reviews'][0];
+            foreach ($lastUpdateReview as &$v){
+                if(is_array($v)){
+                    $v = implode($v,'');
+                }
+            }
             $implode_array = implode($lastUpdateReview,'');
             return md5($implode_array);
     }
