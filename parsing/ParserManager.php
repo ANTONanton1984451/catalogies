@@ -17,7 +17,7 @@ class ParserManager {
         "'yell'"
     ];
 
-    const SOURCES_LIMIT = 1;
+    const SOURCES_LIMIT = 3;
 
     private $worker;
     private $sources = [];

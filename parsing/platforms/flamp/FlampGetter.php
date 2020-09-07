@@ -1,14 +1,9 @@
 <?php
-
-// todo: Проблематика. Генерация старого хэша происходит не очень очевидно. Стоит обратить внимание, и вынести его
-//          в отдельную функцию
-
-// todo: Придумать, куда перенести типы записи, для того, чтобы изменения этого механизма в одном месте, не создавало
-//          ошибки в других местах
-
 // todo: Переписать getReviews
 
 // todo: После срабатывания isOverHalfYear нужно сначала доставить отзывы, а потом еще одна итерация
+
+// todo: Посмотреть библиотеки, которые автоматически создают реалистичные headers, для запросов
 
 namespace parsing\platforms\flamp;
 
@@ -60,8 +55,6 @@ class FlampGetter implements GetterInterface
      * @param $config
      */
     public function setConfig($config) {
-        $this->metaRecord = new stdClass();
-
         if ($this->validateConfig($config)) {
             $this->status = $config['handled'];
             $this->metaRecord = $this->generateMetaRecord($config['source'], $config['source_hash']);
@@ -165,7 +158,7 @@ class FlampGetter implements GetterInterface
         if ($isFirst === true) {
             $apiURL = self::API_URL_PREFIX . $this->organizationId . self::API_URL_POSTFIX;
             $response = Request::get($apiURL, self::HEADERS);
-            $this->metaRecord->hash = md5(json_encode($response->body));
+            $this->saveFirstPage($response->body);
 
         } else {
             $response = Request::get($this->nextLink, self::HEADERS);
@@ -211,7 +204,13 @@ class FlampGetter implements GetterInterface
         return true;
     }
 
-    private function isEqualsHash($hash) {
+    /**
+     * Функция сравнивает текущий хэш с хэшем, полученным при предыдущей обработке данной ссылки.
+
+     * @param $hash string
+     * @return bool
+     */
+    private function isEqualsHash(string $hash) {
         return $this->oldHash === $hash;
     }
 
@@ -224,5 +223,9 @@ class FlampGetter implements GetterInterface
         }
 
         return false;
+    }
+
+    private function saveFirstPage($records) {
+        $this->metaRecord->hash = md5(json_encode($records));
     }
 }

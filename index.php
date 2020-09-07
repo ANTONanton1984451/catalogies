@@ -20,8 +20,7 @@ LoggerManager::init();
 
 loopGo();
 
-function loopGo()
-{
+function loopGo() {
     $newSourcesWorker = new Worker();
     $newSourcesWorker->name = "NEW sources worker";
     $newSourcesWorker->count = 1;
