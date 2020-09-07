@@ -49,13 +49,9 @@ class FlampGetter implements GetterInterface
     private $isReviewsSended = false;
 
     const LIMIT_REVIEWS = 50;
-    const HALF_YEAR_TIMESTAMP = 15724800;
 
     const FIRST_RECORDS = true;
     const OTHER_RECORDS = false;
-
-    const TYPE_REVIEWS = 'reviews';
-    const TYPE_METARECORD = 'meta';
 
     /**
      * Данная функция выполняется после инициализации объекта, и задает значения для полей, а также
@@ -68,33 +64,13 @@ class FlampGetter implements GetterInterface
 
         if ($this->validateConfig($config)) {
             $this->status = $config['handled'];
-            $this->halfYearAgo = time() - self::HALF_YEAR_TIMESTAMP;
             $this->metaRecord = $this->generateMetaRecord($config['source'], $config['source_hash']);
+            $this->halfYearAgo = time() - self::HALF_YEAR_TIMESTAMP;
 
             if ($this->status === self::SOURCE_HANDLED) {
                 $this->oldHash = json_decode($config["config"], true)['old_hash'];
             }
         }
-    }
-
-    private function validateConfig($config) {
-        $response = Request::get($config['source']);
-
-        $incorrectHttpCode = $response->code != 200;
-        $handledNotExist = !array_key_exists("handled", $config);
-        $trackNotExist = !array_key_exists("track", $config);
-
-        if ($incorrectHttpCode || $handledNotExist || $trackNotExist) {
-            $this->status = self::SOURCE_UNPROCESSABLE;
-            (new DatabaseShell())->updateSourceReview($config['source_hash'], ['handled' => 'UNPROCESSABLE']);
-
-            $message = "Недостаточно данных для обработки ссылки";
-            LoggerManager::log(LoggerManager::DEBUG, $message, [$config]);
-
-            return false;
-        }
-
-        return true;
     }
 
     private function generateMetaRecord($source, $source_hash) {
@@ -110,8 +86,6 @@ class FlampGetter implements GetterInterface
             $this->status = self::SOURCE_UNPROCESSABLE;
             (new DatabaseShell())->updateSourceReview($source_hash, ['handled' => 'UNPROCESSABLE']);
         }
-
-
 
         $averageMark = $document->find('div.filial-rating__value')->text();
         $countReviews = $document->find('div.hg-row__side.t-h3')->text();
@@ -215,6 +189,26 @@ class FlampGetter implements GetterInterface
 
     private function getEndCode() {
         return self::END_CODE;
+    }
+
+    private function validateConfig($config) {
+        $response = Request::get($config['source']);
+
+        $incorrectHttpCode = $response->code != 200;
+        $handledNotExist = !array_key_exists("handled", $config);
+        $trackNotExist = !array_key_exists("track", $config);
+
+        if ($incorrectHttpCode || $handledNotExist || $trackNotExist) {
+            $this->status = self::SOURCE_UNPROCESSABLE;
+            (new DatabaseShell())->updateSourceReview($config['source_hash'], ['handled' => 'UNPROCESSABLE']);
+
+            $message = "Недостаточно данных для обработки ссылки";
+            LoggerManager::log(LoggerManager::DEBUG, $message, [$config]);
+
+            return false;
+        }
+
+        return true;
     }
 
     private function isEqualsHash($hash) {

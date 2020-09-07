@@ -1,17 +1,12 @@
 <?php
-
 // todo: Проверка на успешность записи, если неудача, exception - rollback - logger
-
 namespace parsing\platforms\flamp;
 
 use parsing\DB\DatabaseShell;
 use parsing\factories\factory_interfaces\ModelInterface;
 use parsing\services\TaskQueueController;
 
-class FlampModel implements ModelInterface
-{
-    const HALF_YEAR_TIMESTAMP = 15552000;
-
+class FlampModel implements ModelInterface {
     private $maxDate = PHP_INT_MIN;
     private $minDate = PHP_INT_MAX;
 
@@ -23,17 +18,13 @@ class FlampModel implements ModelInterface
 
     private $beforeHalfYearTimestamp;
 
-    const TYPE_REVIEWS = 'reviews';
-    const TYPE_METARECORD = 'meta';
-
-
     public function setConfig($config) {
         $this->beforeHalfYearTimestamp = time() - self::HALF_YEAR_TIMESTAMP;
 
         $this->status = $config['handled'];
         $this->constInfo['source_hash_key'] = $config['source_hash'];
 
-        if ($this->status === self::STATUS_HANDLED) {
+        if ($this->status === self::SOURCE_HANDLED) {
             $this->sourceConfig = json_decode($config['config'], true);
             $this->maxDate = $sourceConfig['max_date'];
         }
@@ -53,9 +44,9 @@ class FlampModel implements ModelInterface
     }
 
     private function writeReviews($records) {
-        if ($this->status === self::STATUS_NEW) {
+        if ($this->status === self::SOURCE_NEW) {
             $datePoint = $this->beforeHalfYearTimestamp;
-        } elseif ($this->status === self::STATUS_HANDLED) {
+        } elseif ($this->status === self::SOURCE_HANDLED) {
             $datePoint = $this->maxDate;
         }
 

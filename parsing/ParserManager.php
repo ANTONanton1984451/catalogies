@@ -7,7 +7,6 @@ use parsing\factories\ParserFactory;
 use parsing\DB\DatabaseShell;
 
 class ParserManager {
-
     const HIGH_PRIORITY_PLATFORMS = [
         "'google'",
         "'zoon'"
@@ -18,7 +17,7 @@ class ParserManager {
         "'yell'"
     ];
 
-    const SOURCES_LIMIT = 5;
+    const SOURCES_LIMIT = 1;
 
     private $worker;
     private $sources = [];
@@ -53,6 +52,9 @@ class ParserManager {
         echo "Worker #$this->worker: Success parsing \n";
         return 'success';
     }
+
+
+
     private function getActualSources($worker) {
         switch ($worker) {
             case NEW_WORKER:

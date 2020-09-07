@@ -40,10 +40,11 @@ class Parser
                 continue;
             }
 
-
             $buffer = $this->filter->clearData($buffer);
             $this->model->writeData($buffer);
         }
+
+        echo "I'm parsed this source --> " . $this->config['source'] . "\n";
     }
 
     public function setGetter(GetterInterface $getter): void {

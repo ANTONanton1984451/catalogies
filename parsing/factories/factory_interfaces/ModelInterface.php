@@ -2,9 +2,7 @@
 
 namespace parsing\factories\factory_interfaces;
 
-interface ModelInterface extends ConstantInterfaces
-{
-
+interface ModelInterface extends ConstantInterfaces {
     public function setConfig($config);
     public function writeData($records);
 }

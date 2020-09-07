@@ -1,11 +1,8 @@
 <?php
 
-
 namespace parsing\factories\factory_interfaces;
 
-
-interface ConstantInterfaces
-{
+interface ConstantInterfaces {
     const END_CODE = 42;
 
     const SOURCE_HANDLED  = 'HANDLED';

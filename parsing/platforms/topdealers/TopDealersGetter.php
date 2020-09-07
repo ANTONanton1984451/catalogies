@@ -6,6 +6,7 @@ namespace parsing\platforms\topdealers;
 use parsing\DB\DatabaseShell;
 use parsing\factories\factory_interfaces\GetterInterface;
 use parsing\logger\LoggerManager;
+use Unirest\Request;
 
 /**
  * Class TopDealersGetter
@@ -113,7 +114,7 @@ class TopDealersGetter implements GetterInterface
     private function getContent(string $url):?string
     {
         if($this->checkURL($url)){
-            return file_get_contents($url);
+            return Request::get($url)->body;
         }else{
             return self::BAD_CONNECTION;
         }

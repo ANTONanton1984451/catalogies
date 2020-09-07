@@ -165,14 +165,11 @@ class MigrationsManager
     }
 
     public function seedDatabase() {
-
-
-
         $platforms = [
-            'flamp',
-//            'topdealers',
-            'yell',
-            'zoon',
+//            'flamp',
+            'topdealers',
+//            'yell',
+//            'zoon',
         ];
 
         $flamp_links = [
@@ -222,49 +219,47 @@ class MigrationsManager
             }
         }
 
-//        $google_links = [
-//            [
-//                'source'=>'accounts/101148201288830043360/locations/5839617167530752762',
-//                'config'=>[
-//                    'token_info'=>[
-//                          'access_token' =>  'ya29.a0AfH6SMClm14SrVXboygJiAhw9IckyEg5pYsCE64YMLsq30RbxQSoJtUcTHtI9GsiTQD6rCAWjwoXQdJ1E-vZ8GNAi5IhVXCHGQn14xQpcFhYbeeribO4GZVctAp9p7YwZEZugc1zftYmUB9gzGAojDIwKJspZbFZquc',
-//                          'expires_in' =>  3599,
-//                          'refresh_token' => '1//0civO_apGzWFeCgYIARAAGAwSNwF-L9Ir01TiziSGGG33fFDsSFaPwffgvsjwetQhqAYpwjmKMjJs-RPuxOR9UwP9PU61nfZmDvc',
-//                          'scope' =>  'https://www.googleapis.com/auth/business.manage',
-//                          'token_type' => 'Bearer',
-//                          'created' => 1598615609
-//                    ]
-//                ]
-//            ],
-//            [
-//                'source'=>'accounts/101148201288830043360/locations/2321278413977180698',
-//                'config'=>[
-//                    'token_info'=>[
-//                        'access_token' =>  'ya29.a0AfH6SMClm14SrVXboygJiAhw9IckyEg5pYsCE64YMLsq30RbxQSoJtUcTHtI9GsiTQD6rCAWjwoXQdJ1E-vZ8GNAi5IhVXCHGQn14xQpcFhYbeeribO4GZVctAp9p7YwZEZugc1zftYmUB9gzGAojDIwKJspZbFZquc',
-//                        'expires_in' =>  3599,
-//                        'refresh_token' => '1//0civO_apGzWFeCgYIARAAGAwSNwF-L9Ir01TiziSGGG33fFDsSFaPwffgvsjwetQhqAYpwjmKMjJs-RPuxOR9UwP9PU61nfZmDvc',
-//                        'scope' =>  'https://www.googleapis.com/auth/business.manage',
-//                        'token_type' => 'Bearer',
-//                        'created' => 1598615609
-//                    ]
-//                ]
-//            ]
-//        ];
-//
-//        foreach ($google_links as $source){
-//
+        $google_links = [
+            [
+                'source'=>'accounts/101148201288830043360/locations/5839617167530752762',
+                'config'=>[
+                    'token_info'=>[
+                          'access_token' =>  'ya29.a0AfH6SMClm14SrVXboygJiAhw9IckyEg5pYsCE64YMLsq30RbxQSoJtUcTHtI9GsiTQD6rCAWjwoXQdJ1E-vZ8GNAi5IhVXCHGQn14xQpcFhYbeeribO4GZVctAp9p7YwZEZugc1zftYmUB9gzGAojDIwKJspZbFZquc',
+                          'expires_in' =>  3599,
+                          'refresh_token' => '1//0civO_apGzWFeCgYIARAAGAwSNwF-L9Ir01TiziSGGG33fFDsSFaPwffgvsjwetQhqAYpwjmKMjJs-RPuxOR9UwP9PU61nfZmDvc',
+                          'scope' =>  'https://www.googleapis.com/auth/business.manage',
+                          'token_type' => 'Bearer',
+                          'created' => 1598615609
+                    ]
+                ]
+            ],
+            [
+                'source'=>'accounts/101148201288830043360/locations/2321278413977180698',
+                'config'=>[
+                    'token_info'=>[
+                        'access_token' =>  'ya29.a0AfH6SMClm14SrVXboygJiAhw9IckyEg5pYsCE64YMLsq30RbxQSoJtUcTHtI9GsiTQD6rCAWjwoXQdJ1E-vZ8GNAi5IhVXCHGQn14xQpcFhYbeeribO4GZVctAp9p7YwZEZugc1zftYmUB9gzGAojDIwKJspZbFZquc',
+                        'expires_in' =>  3599,
+                        'refresh_token' => '1//0civO_apGzWFeCgYIARAAGAwSNwF-L9Ir01TiziSGGG33fFDsSFaPwffgvsjwetQhqAYpwjmKMjJs-RPuxOR9UwP9PU61nfZmDvc',
+                        'scope' =>  'https://www.googleapis.com/auth/business.manage',
+                        'token_type' => 'Bearer',
+                        'created' => 1598615609
+                    ]
+                ]
+            ]
+        ];
 
-//            $db = new DatabaseShell();
-//            $db->insertSourceReview([
-//                'source_hash' => md5($source['source']),
-//                'platform' => 'google',
-//                'source' => $source['source'],
-//                'actual' => 'ACTIVE',
-//                'track' => 'ALL',
-//                'handled' => 'NEW',
-//                'source_config'=>json_encode($source['config'])
-//            ]);
-//        }
+        foreach ($google_links as $source){
+            $db = new DatabaseShell();
+            $db->insertSourceReview([
+                'source_hash' => md5($source['source']),
+                'platform' => 'google',
+                'source' => $source['source'],
+                'actual' => 'ACTIVE',
+                'track' => 'ALL',
+                'handled' => 'NEW',
+                'source_config'=>json_encode($source['config'])
+            ]);
+        }
 
     }
 
@@ -273,8 +268,8 @@ class MigrationsManager
             'database_type' => 'mysql',
             'database_name' => 'test',
             'server' => 'localhost',
-            'username' => 'phpmyadmin',
-            'password' => 'some_pass',
+            'username' => 'borland',
+            'password' => 'attache1974',
             'option' => [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
             ]

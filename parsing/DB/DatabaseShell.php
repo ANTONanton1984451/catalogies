@@ -2,6 +2,7 @@
 
 // todo: singleton?
 // todo: Можно добавить поле isAnswered в review
+// todo: Вынести конфиг с БД из git-репозитория, чтобы можно было не тыркать его постоянно
 
 namespace parsing\DB;
 
@@ -125,7 +126,6 @@ class DatabaseShell
     }
 
 
-    // Work with Task Queue
     public function insertTaskQueue(array $task) : void {
         $this->database->insert("task_queue", $task);
     }
@@ -151,14 +151,13 @@ class DatabaseShell
     }
 
     /** @return Medoo */
-    private function getConnection()
-    {
+    private function getConnection() {
         return new Medoo([
             'database_type' => 'mysql',
             'database_name' => 'test',
             'server' => 'localhost',
-            'username' => 'phpmyadmin',
-            'password' => 'some_pass',
+            'username' => 'borland',
+            'password' => 'attache1974',
             'option' => [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
             ]

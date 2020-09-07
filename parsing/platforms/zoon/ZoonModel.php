@@ -15,6 +15,7 @@ class ZoonModel implements ModelInterface {
     private $sourceConfig;
     private $sourceHash;
     private $sourceStatus;
+    private $sourceTrack;
 
     private $beforeHalfYearTimestamp;
 
@@ -40,6 +41,7 @@ class ZoonModel implements ModelInterface {
     public function setConfig($config) {
         $this->sourceStatus = $config['handled'];
         $this->sourceHash = $config['source_hash'];
+        $this->sourceTrack = $config['track'];
         $this->constInfo['source_hash_key'] = $config['source_hash'];
         if ($this->sourceStatus === self::SOURCE_HANDLED) {
             $sourceConfig = json_decode($config['config'], true);
