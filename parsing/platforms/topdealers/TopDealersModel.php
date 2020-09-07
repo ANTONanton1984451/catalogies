@@ -95,6 +95,14 @@ class TopDealersModel implements ModelInterface
     }
 
     /**
+     * @return array
+     */
+    public function getNotifications(): array
+    {
+        return $this->notifications;
+    }
+
+    /**
      * @param array $reviews
      * @return array
      */

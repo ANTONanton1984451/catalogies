@@ -22,6 +22,7 @@ class ParserManager {
 
     private $worker;
     private $sources = [];
+    private $notifications = [];
 
     public function __construct($worker) {
         $this->worker = $worker;
@@ -48,11 +49,22 @@ class ParserManager {
             $parser->setModel($parser_factory->buildModel());
 
             $parser->parseSource();
+            $this->notifications[] = ['message'=>$parser->generateJsonMessage(),
+                                        'hash'=>$source['source_hash']];
         }
-
+        $this->notify();
         echo "Worker #$this->worker: Success parsing \n";
         return 'success';
     }
+
+    private function notify():void
+    {
+        //todo:пока заглушка
+        var_dump($this->notifications);
+    }
+
+
+
     private function getActualSources($worker) {
         switch ($worker) {
             case NEW_WORKER:

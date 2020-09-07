@@ -22,7 +22,7 @@ class Parser
 
     private $config;
 
-    private $notifies = [];
+    private $notifications = [];
 
     public function __construct($config) {
         $this->config = $config;
@@ -44,6 +44,7 @@ class Parser
             $buffer = $this->filter->clearData($buffer);
             $this->model->writeData($buffer);
         }
+        $this->notifications = $this->model->getNotifications();
     }
 
     public function setGetter(GetterInterface $getter): void {
@@ -59,6 +60,6 @@ class Parser
     }
 
     public function generateJsonMessage() {
-        return json_encode($this->notifies);
+        return json_encode($this->notifications);
     }
 }
