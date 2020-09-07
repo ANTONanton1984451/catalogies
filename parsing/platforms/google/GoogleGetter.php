@@ -177,12 +177,6 @@ class GoogleGetter  implements GetterInterface
 
     }
 
-
-    public function getNotifications()
-    {
-        // TODO: Implement getNotifications() method.
-    }
-
     /**
      * метод превращает массив в хэш-строку
      * для записи в специальную переменную
@@ -243,7 +237,7 @@ class GoogleGetter  implements GetterInterface
             if($timeStamp <= $timeBreak ){
                 $data=array_slice($data,0,$i);
                 $this->mainData['platform_info']['reviews'] = $data;
-                return;
+                break;
             }
         }
     }

@@ -242,7 +242,7 @@ class TopDealersGetter implements GetterInterface
             }else{
                 $data=array_slice($data,0,$i);
                 $this->mainData['reviews'] = $data;
-                return;
+                break;
             }
 
         }

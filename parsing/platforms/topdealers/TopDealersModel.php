@@ -45,13 +45,12 @@ class TopDealersModel implements ModelInterface
         $this->updateConfig($data['config']);
         $this->updateMetaInfo($data['meta_info']);
 
-        if(!empty($data['review'])){
-            $this->insertReviews($data['reviews']);
+        if(!empty($data['reviews'])){
             $this->setNotifications($data['reviews']);
         }
 
         if($this->handled === self::SOURCE_NEW){
-
+            $this->notifications = $data['meta_info'];
             $minimalDateReview = isset($data['reviews'])
                                  ? $data['reviews'][count($data['reviews'])-1]['date'] : 0;
 
@@ -62,6 +61,9 @@ class TopDealersModel implements ModelInterface
             $this->dataBase->updateSourceReview($this->constInfo['source_hash_key'],['handled'=>'HANDLED']);
 
         }elseif ($this->handled === self::SOURCE_HANDLED){
+            if(!empty($data['reviews'])){
+                $this->setNotifications($data['reviews']);
+            }
             $this->taskQueueController->updateTaskQueue($this->constInfo['source_hash_key']);
         }
     }

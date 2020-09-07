@@ -106,6 +106,7 @@ class GoogleModel implements ModelInterface
 
         if(!empty($data['reviews'])){
             $this->insertReviews($data['reviews']);
+            $this->setNotifications($data['reviews']);
             $this->updateConfig($data['config']);
         }else{
             $columns = ['source_meta_info'=>json_encode($data['meta'])];
@@ -125,13 +126,12 @@ class GoogleModel implements ModelInterface
             $this->tempReviews = $data['reviews'];//????
             $this->reviewCount += count($data['reviews']);
             $this->insertReviews($data['reviews']);
-            $this->setNotifications($data['reviews']);
             $this->updateConfig($data['config']);
 
         }else{
             $columns = [ 'source_meta_info' => json_encode($data['meta']),
                          'handled'=> self::SOURCE_HANDLED];
-
+            $this->notifications = $data['meta'];
             $this->dataBase->updateSourceReview($this->source_hash,$columns);
             $this->queueController->insertTaskQueue($this->reviewCount,
                                                     $this->tempReviews[count($this->tempReviews)-1]['date'],
