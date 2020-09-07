@@ -27,7 +27,6 @@ class GoogleGetter  implements GetterInterface
     private $dataBase;
 
     protected $source;
-    protected $track;//maybe deleted?
     protected $handle;
 
     private $trigger = self::CONTINUE;

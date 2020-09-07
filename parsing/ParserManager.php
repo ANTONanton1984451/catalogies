@@ -67,9 +67,11 @@ class ParserManager implements ConstantInterfaces
     {
         $source_notification =  ['message'=>$parser->generateJsonMessage(),
                                   'hash'=>$source['source_hash']];
+
         if($source['handled'] === self::SOURCE_HANDLED){
             $source_notification['track'] = $source['track'];
         }
+
         return $source_notification;
     }
 

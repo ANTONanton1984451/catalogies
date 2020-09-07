@@ -23,8 +23,8 @@ class TopDealersModel implements ModelInterface
 
     private $dataBase;
     private $taskQueueController;
-
-    private $notifications;
+    //todo:Нужно продумать момент,когда ссылка ломанная
+    private $notifications = [];
 
     public function __construct(DatabaseShell $db,TaskQueueController $controller)
     {
@@ -131,11 +131,11 @@ class TopDealersModel implements ModelInterface
      * @param string $meta
      *
      */
-    private function updateMetaInfo(string $meta):void
+    private function updateMetaInfo(array $meta):void
     {
         $this->dataBase->updateSourceReview(
             $this->constInfo['source_hash_key'],
-            ['source_meta_info'=>$meta]
+            ['source_meta_info'=>json_encode($meta)]
         );
     }
 

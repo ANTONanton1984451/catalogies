@@ -97,7 +97,7 @@ class TopDealersFilter implements FilterInterface
      */
     private function setMetaInfo(array $meta_info):void
     {
-        $this->mainData['meta_info'] = json_encode($meta_info);
+        $this->mainData['meta_info'] = $meta_info;
     }
 
     /**

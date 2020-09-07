@@ -1,6 +1,8 @@
 <?php
 //Скрипт пересчёта коэффициентов
 require_once '../../../vendor/autoload.php';
+require_once '../../../const_configs.php';
+
 
 use Medoo\Medoo;
 
@@ -13,10 +15,10 @@ $now_sec = time();
 
 $db = new Medoo([
     'database_type' => 'mysql',
-    'database_name' => 'test',
+    'database_name' => DATABASE,
     'server' => 'localhost',
-    'username' => 'root',
-    'password' => '',
+    'username' => DB_USER,
+    'password' => DB_PASSWORD,
     'option' => [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
     ]
