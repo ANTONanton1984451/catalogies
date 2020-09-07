@@ -165,6 +165,7 @@ class MigrationsManager
     }
 
     public function seedDatabase() {
+
         $platforms = [
 //            'flamp',
             'topdealers',
@@ -193,31 +194,63 @@ class MigrationsManager
             'https://www.yell.ru/moscow/com/look-in-rooms_9763298/',
         ];
 
-        $zoon_links = [
-            'https://volgograd.zoon.ru/restaurants/kapuchino_v_krasnooktyabrskom_rajone/',
-            'https://volgograd.zoon.ru/restaurants/kafe_3_sushi_na_ulitse_karbysheva/',
-            'https://volgograd.zoon.ru/restaurants/restoran-bar_velvet/',
-            'https://volgograd.zoon.ru/restaurants/restoran_bar_grill_na_ulitse_mira/',
-            'https://volgograd.zoon.ru/restaurants/restoran_hampton_by_hilton/',
-            'https://volgograd.zoon.ru/restaurants/shashlyk-bar_piratskaya_pristan_na_ulitse_marshala_rokossovskogo/',
-        ];
 
-        foreach ($platforms as $platform) {
 
-            $sources = $platform . "_links";
 
-            foreach ($$sources as $source) {
-                $db = new DatabaseShell();
-                $db->insertSourceReview([
-                    'source_hash'   => md5($source),
-                    'platform'      => $platform,
-                    'source'        => $source,
-                    'actual'        => 'ACTIVE',
-                    'track'         => 'ALL',
-                    'handled'       => 'NEW'
-                ]);
-            }
-        }
+//        $platforms = [
+//            'flamp',
+////            'topdealers',
+//            'yell',
+//            'zoon',
+//        ];
+//
+//        $flamp_links = [
+//            'https://krasnodar.flamp.ru/firm/il_patio_set_restoranov-3237490513310210',
+//            'https://krasnodar.flamp.ru/firm/amsterdambar_bar-3237490513262584',
+//            'https://spb.flamp.ru/firm/smoke_bbq_barbekyu_bar_ooo_pech-70000001025941327',
+//            'https://spb.flamp.ru/firm/kozhno_venerologicheskijj_dispanser_5-5348552838587562',
+//            'https://spb.flamp.ru/firm/spot_set_stancijj_po_zamene_masla-70000001022228050',
+//        ];
+//
+//        $topdealers_links = [
+//            'https://topdealers.ru/brands/renault/belgorod/1425/',
+//            'https://topdealers.ru/brands/nissan/sankt-peterburg/5009/',
+//            'https://topdealers.ru/brands/audi/moskva/69/'
+//        ];
+//
+//        $yell_links = [
+//            'https://www.yell.ru/moscow/com/lawson-s-bar_12035706/',
+//            'https://www.yell.ru/moscow/com/karaoke-bar-fortepyano_11919795/',
+//            'https://www.yell.ru/moscow/com/tancevalnyj-klub-miks-afterparty_11846202/',
+//            'https://www.yell.ru/moscow/com/look-in-rooms_9763298/',
+//        ];
+//
+//        $zoon_links = [
+//            'https://volgograd.zoon.ru/restaurants/kapuchino_v_krasnooktyabrskom_rajone/',
+//            'https://volgograd.zoon.ru/restaurants/kafe_3_sushi_na_ulitse_karbysheva/',
+//            'https://volgograd.zoon.ru/restaurants/restoran-bar_velvet/',
+//            'https://volgograd.zoon.ru/restaurants/restoran_bar_grill_na_ulitse_mira/',
+//            'https://volgograd.zoon.ru/restaurants/restoran_hampton_by_hilton/',
+//            'https://volgograd.zoon.ru/restaurants/shashlyk-bar_piratskaya_pristan_na_ulitse_marshala_rokossovskogo/',
+//        ];
+//
+//        foreach ($platforms as $platform) {
+//
+//            $sources = $platform . "_links";
+//
+//            foreach ($$sources as $source) {
+//                $db = new DatabaseShell();
+//                $db->insertSourceReview([
+//                    'source_hash'   => md5($source),
+//                    'platform'      => $platform,
+//                    'source'        => $source,
+//                    'actual'        => 'ACTIVE',
+//                    'track'         => 'ALL',
+//                    'handled'       => 'NEW'
+//                ]);
+//            }
+//        }
+
 
         $google_links = [
             [
@@ -249,6 +282,8 @@ class MigrationsManager
         ];
 
         foreach ($google_links as $source){
+
+
             $db = new DatabaseShell();
             $db->insertSourceReview([
                 'source_hash' => md5($source['source']),

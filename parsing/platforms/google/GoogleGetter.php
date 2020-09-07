@@ -284,6 +284,11 @@ class GoogleGetter  implements GetterInterface
     private function arrayReviewToMd5Hash(): string
     {
             $lastUpdateReview = $this->mainData['platform_info']['reviews'][0];
+            foreach ($lastUpdateReview as &$v){
+                if(is_array($v)){
+                    $v = implode($v,'');
+                }
+            }
             $implode_array = implode($lastUpdateReview,'');
             return md5($implode_array);
     }
