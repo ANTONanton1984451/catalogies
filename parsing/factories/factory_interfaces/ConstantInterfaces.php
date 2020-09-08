@@ -8,8 +8,8 @@ interface ConstantInterfaces {
     const SOURCE_HANDLED  = 'HANDLED';
     const SOURCE_NEW = 'NEW';
     const SOURCE_UNPROCESSABLE = 'UNPROCESSABLE';
-    const NON_COMPLETED = 'UNCOMPLETED';
-    const NON_UPDATED = 'NON_UPDATED';
+    const SOURCE_UNCOMPLETED = 'UNCOMPLETED';
+    const SOURCE_NON_UPDATED = 'NON_UPDATED';
 
     const HALF_YEAR_TIMESTAMP = 15552000;
 
@@ -21,6 +21,9 @@ interface ConstantInterfaces {
     const TONAL_POSITIVE = 'POSITIVE';
     const TONAL_NEUTRAL  = 'NEUTRAL';
 
-    const TYPE_REVIEWS = true;
-    const TYPE_METARECORD = false;
+    const TYPE_REVIEWS = 'reviews';
+    const TYPE_METARECORD = 'meta';
+    const TYPE_ERROR = 'error';
+
+
 }

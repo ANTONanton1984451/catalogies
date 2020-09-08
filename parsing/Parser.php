@@ -63,7 +63,7 @@ class Parser implements ConstantInterfaces
         $this->model = $model;
     }
 
-    public function generateJsonMessage() {
-        return json_encode($this->notifications);
+    public function generateNotifications() {
+        return $this->notifications;
     }
 }

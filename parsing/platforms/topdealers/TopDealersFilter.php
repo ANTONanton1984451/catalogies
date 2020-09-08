@@ -64,6 +64,8 @@ class TopDealersFilter implements FilterInterface
             case 'Отрицательный':
                 $enum = 'NEGATIVE';
                 break;
+            default :
+                $enum = 'UNDEFINED';
         }
         return $enum;
     }
@@ -77,13 +79,13 @@ class TopDealersFilter implements FilterInterface
     {
         switch ($tonal){
             case 'Положительный':
-                $a = 5;
+                $a = 10;
                 break;
             case 'Нейтральный':
-                $a = 4;
+                $a = 8;
                 break;
             case 'Отрицательный':
-                $a = 3;
+                $a = 6;
                 break;
             default:
                 $a = -1;
