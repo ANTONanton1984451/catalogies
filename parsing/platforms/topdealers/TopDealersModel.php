@@ -175,8 +175,7 @@ class TopDealersModel implements ModelInterface
      * @param int $minimalDate
      * @param string $hash
      */
-    private function insertTaskQueue(int $countReviews,int $minimalDate,string $hash):void
-    {
+    private function insertTaskQueue(int $countReviews,int $minimalDate,string $hash):void {
             $this->taskQueueController->insertTaskQueue($hash, $countReviews,$minimalDate);
     }
 
