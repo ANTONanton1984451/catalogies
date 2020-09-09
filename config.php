@@ -1,8 +1,8 @@
 <?php
 
 define("DATABASE",'test');
-define("DB_USER",'borland');
-define("DB_PASSWORD",'attache1974');
+define("DB_USER",'phpmyadmin');
+define("DB_PASSWORD",'some_pass');
 
 define("NEW_WORKER", 0);
 define("HIGH_PRIORITY_WORKER", 1);

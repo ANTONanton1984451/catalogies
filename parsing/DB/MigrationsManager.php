@@ -172,8 +172,8 @@ class MigrationsManager
     public function seedDatabase() {
         $platforms = [
 //            'flamp',
-//            'topdealers',
-            'yell',
+            'topdealers',
+//            'yell',
 //            'zoon',
         ];
 
@@ -255,18 +255,18 @@ class MigrationsManager
             ]
         ];
 
-        foreach ($google_links as $source){
-            $db = new DatabaseShell();
-            $db->insertSourceReview([
-                'source_hash' => md5($source['source']),
-                'platform' => 'google',
-                'source' => $source['source'],
-                'actual' => 'ACTIVE',
-                'track' => 'ALL',
-                'handled' => 'NEW',
-                'source_config'=>json_encode($source['config'])
-            ]);
-        }
+//        foreach ($google_links as $source){
+//            $db = new DatabaseShell();
+//            $db->insertSourceReview([
+//                'source_hash' => md5($source['source']),
+//                'platform' => 'google',
+//                'source' => $source['source'],
+//                'actual' => 'ACTIVE',
+//                'track' => 'ALL',
+//                'handled' => 'NEW',
+//                'source_config'=>json_encode($source['config'])
+//            ]);
+//        }
     }
 
 

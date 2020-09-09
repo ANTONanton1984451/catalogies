@@ -27,8 +27,11 @@ class GoogleModel implements ModelInterface
     private $handled;
     private $track;
 
-    private $notifications = ['type'=>self::TYPE_ERROR,
-                              'container'=>self::ERROR_MESSAGE];
+    private $notifications = ['container'=>[
+                                            'type'=>self::TYPE_ERROR,
+                                            'content'=>self::ERROR_MESSAGE
+                                            ]
+                             ];
     private $tempReviews;
     private $reviewCount = 0;
 
@@ -54,9 +57,6 @@ class GoogleModel implements ModelInterface
            $this->writeHandledData($data);
        }
        $this->setNotifications($data);
-        LoggerManager::log(LoggerManager::INFO,
-                            'Insert data|GoogleModel',
-                                    ['hash'=>$this->source_hash]);
     }
 
     /**
@@ -97,15 +97,16 @@ class GoogleModel implements ModelInterface
     {
         if($this->handled === self::SOURCE_NEW && empty($data['reviews'])){
 
-            $this->notifications['container'] = array_merge($data['meta'],['added_reviews'=>$this->reviewCount]);
-            $this->notifications['type'] = self::TYPE_METARECORD;
+            $this->notifications['container']['content'] = array_merge($data['meta'],['added_reviews'=>$this->reviewCount]);
+            $this->notifications['container']['type'] = self::TYPE_METARECORD;
 
         }elseif ($this->handled === self::SOURCE_HANDLED){
             if(!empty($data['reviews'])){
                 $this->setReviewNotifications($data['reviews']);
             }
             if($this->reviewCount === 0){
-                $this->notifications['container'] = [];
+                $this->notifications['container']['content'] = [];
+                $this->notifications['container']['type'] = self::TYPE_EMPTY;
             }
         }
     }
@@ -197,15 +198,17 @@ class GoogleModel implements ModelInterface
      */
     private function setReviewNotifications(array $reviews):void
     {
-        $this->notifications['type'] = self::TYPE_REVIEWS;
-        $this->notifications['container'] = [];
+        $this->notifications['container']['type'] = self::TYPE_REVIEWS;
+        $this->notifications['container']['content'] = [];
 
         switch ($this->track){
             case self::TRACK_ALL:
-                $this->notifications['container'] = array_merge($this->notifications['container'],$reviews);
+                $this->notifications['container']['content'] = array_merge($this->notifications['container']['content'],
+                                                                            $reviews);
                 break;
             case self::TRACK_NEGATIVE:
-                $this->notifications['container'] = array_merge($this->notifications['container'],$this->catchNegative($reviews));
+                $this->notifications['container']['content'] = array_merge($this->notifications['container']['content'],
+                                                                            $this->catchNegative($reviews));
                 break;
         }
     }

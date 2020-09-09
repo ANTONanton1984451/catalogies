@@ -73,7 +73,6 @@ class TopDealersGetter implements GetterInterface
         }
 
         \phpQuery::unloadDocuments();
-        LoggerManager::log(LoggerManager::DEBUG,'|TopDealersGetter');
         return $this->mainData;
     }
 

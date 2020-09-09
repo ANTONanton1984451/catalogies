@@ -23,6 +23,7 @@ interface ConstantInterfaces {
 
     const TYPE_REVIEWS = 'reviews';
     const TYPE_METARECORD = 'meta';
+    const TYPE_EMPTY = 'empty';
     const TYPE_ERROR = 'error';
 
 

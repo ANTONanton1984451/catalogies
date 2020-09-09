@@ -52,7 +52,13 @@ class ParserManager implements ConstantInterfaces {
      */
     private function notify():void
     {
-        var_dump(json_encode($this->notifications));
+
+        foreach ($this->notifications as $v){
+            if($v['container']['type'] !== self::TYPE_EMPTY){
+                var_dump(json_encode($this->notifications));
+            }
+        }
+
     }
 
     private function getActualSources($worker) {

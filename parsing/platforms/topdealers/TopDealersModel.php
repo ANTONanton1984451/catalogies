@@ -25,8 +25,11 @@ class TopDealersModel implements ModelInterface
     private $dataBase;
     private $taskQueueController;
     //todo:Нужно продумать момент,когда ссылка ломанная
-    private $notifications = ['type'=>self::TYPE_ERROR,
-                              'container'=>self::ERROR_MESSAGE];
+    private $notifications = ['container'=>[
+                                            'type'=>self::TYPE_ERROR,
+                                            'content'=>self::ERROR_MESSAGE
+                                        ]
+                             ];
 
     public function __construct(DatabaseShell $db,TaskQueueController $controller)
     {
@@ -92,8 +95,8 @@ class TopDealersModel implements ModelInterface
      */
     private function writeNewData(array $data):void
     {
-        $this->notifications['container'] = $data['meta_info'];
-        $this->notifications['type'] = self::TYPE_METARECORD;
+        $this->notifications['container']['content'] = $data['meta_info'];
+        $this->notifications['container']['type'] = self::TYPE_METARECORD;
 
         $minimalDateReview = isset($data['reviews'])
                              ?$data['reviews'][count($data['reviews'])-1]['date']
@@ -114,8 +117,10 @@ class TopDealersModel implements ModelInterface
         if(!empty($data['reviews'])){
             $this->setReviewNotifications($data['reviews']);
         }
-        if($this->notifications['type'] === self::TYPE_ERROR){
-            $this->notifications['container'] = [];
+        if($this->notifications['container']['type'] === self::TYPE_ERROR){
+
+            $this->notifications['container']['type'] = self::TYPE_EMPTY;
+            $this->notifications['container']['content'] = [];
         }
         $this->taskQueueController->updateTaskQueue($this->constInfo['source_hash_key']);
     }
@@ -126,14 +131,16 @@ class TopDealersModel implements ModelInterface
      */
     private function setReviewNotifications(array $reviews):void
     {
-        $this->notifications['type'] = self::TYPE_REVIEWS;
-        $this->notifications['container'] = [];
+        $this->notifications['container']['type'] = self::TYPE_REVIEWS;
+        $this->notifications['container']['content'] = [];
         switch ($this->track){
             case self::TRACK_ALL:
-                $this->notifications['container'] = array_merge($this->notifications['container'],$reviews);
+                $this->notifications['container']['content'] = array_merge($this->notifications['container']['content'],
+                                                                           $reviews);
                 break;
             case self::TRACK_NEGATIVE:
-                $this->notifications['container'] = array_merge($this->notifications['container'],$this->catchNegative($reviews));
+                $this->notifications['container']['content'] = array_merge($this->notifications['container']['content'],
+                                                                           $this->catchNegative($reviews));
                 break;
         }
     }

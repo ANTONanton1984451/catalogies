@@ -1,6 +1,6 @@
 .idea/
 vendor/
 chernovick.txt
-const_configs.php
+config.php
 my_dev.log
 log_files/
