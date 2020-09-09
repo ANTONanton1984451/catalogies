@@ -1,18 +1,17 @@
 <?php
 
+// todo: Проверка на официальный ответ
+
 namespace parsing\platforms\zoon;
 
 use parsing\factories\factory_interfaces\FilterInterface;
 use phpQuery;
-use stdClass;
 
 class ZoonFilter implements FilterInterface
 {
     const FORMAT_HARD = 1;
     const FORMAT_MIX = 2;
     const FORMAT_SIMPLE = 3;
-
-
 
     private $format;
 
@@ -36,8 +35,7 @@ class ZoonFilter implements FilterInterface
      * @param $buffer object
      * @return array
      */
-    private function handlingReviews(object $buffer) : array
-    {
+    private function handlingReviews(object $buffer) : array {
         $document = phpQuery::newDocument($buffer->list);
         $this->checkFormat($document);
 
@@ -58,15 +56,13 @@ class ZoonFilter implements FilterInterface
                 $buffer = $this->handleSimpleReview($document);
                 break;
         }
-
         phpQuery::unloadDocuments();
-
         return $buffer;
     }
 
     /**
      * Определяет есть ли в записи отзывов зашифрованные отзывы, и занимают ли они весь массив, либо его часть.
-     *
+
      * @param $document
      */
     private function checkFormat($document): void {
@@ -81,7 +77,7 @@ class ZoonFilter implements FilterInterface
 
     /**
      * Расшифровывает отзывы, и собирает из результата готовый документ.
-     *
+
      * @param $document
      * @return string
      */
@@ -105,7 +101,7 @@ class ZoonFilter implements FilterInterface
 
     /**
      * Находит зашифрованные отзывы, расшифровывает, и собирает вместе с обычными отзывами в единый документ.
-     *
+
      * @param $document
      * @return string
      */
@@ -124,38 +120,40 @@ class ZoonFilter implements FilterInterface
 
     /**
      * Функция из готового документа с отзывами в нормальном формате,
-     *   формирует записи по каждому отзыву, для дальнейшей записи.
-     *
+     * формирует записи по каждому отзыву, для дальнейшей записи.
+
      * @param $document
      * @return array
      */
-    private function handleSimpleReview($document): array
-    {
-        $document->find('ul')->remove();
-        $reviews = $document->find('li');
+    private function handleSimpleReview($document) : array {
+        $reviews = $document->find('li:has(div.comment-text-subtitle)');
 
         foreach ($reviews as $review) {
             $pq = pq($review);
 
-            $date = $pq->find('.iblock.gray')->text();
-            $date = $this->formatDate($date);
-
-            $pq->find('.js-comment-short-text.comment-text span.js-comment-splitmarker')->remove();
-            $short_text = $pq->find('.js-comment-short-text.comment-text span')->text();
-            $long_text = $pq->find('.js-comment-additional-text.hidden')->text();
-
-            if ($long_text != '') {
-                $text = $short_text . $long_text;
+            $ttt = $pq->find('strong a')->attr('href');
+            if ($ttt !== "") {
+                $isAnswered = true;
             } else {
-                $text = $short_text;
+                $isAnswered = false;
             }
 
-            $identifier = $pq->find('span.name')->text();
+            $date = $pq->find('.iblock.gray:first')->text();
+            $date = $this->formatDate($date);
+
+            $pq->find('span.js-comment-splitmarker')->remove();
+            $short_text = $pq->find('div.js-comment-short-text.comment-text:first span:first')->text();
+            $long_text = $pq->find('.js-comment-additional-text.hidden:first')->text();
+
+            $text = $short_text . $long_text;
+
+            $identifier = $pq->find('span.name:first')->text();
 
             $result [] = [
                 'text' => $text,
                 'date' => $date,
-                'identifier' => $identifier
+                'identifier' => $identifier,
+                'is_answered' => $isAnswered,
             ];
         }
 
@@ -179,8 +177,7 @@ class ZoonFilter implements FilterInterface
      * @param $month string
      * @return string
      */
-    private function swapMonthFormat(string $month)
-    {
+    private function swapMonthFormat(string $month) : string {
         switch ($month) {
             case 'января':
                 $month = '01';

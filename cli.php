@@ -31,6 +31,16 @@ if (isset($argv[1])) {
             echo "Seed Database is ready \n";
             break;
 
+        case 'allTest':
+            $controller->dropTables();
+            $controller->createSchema();
+            $controller->seedDatabase();
+            require_once "test.php";
+            break;
+
+        case 'test':
+            require_once "test.php";
+            break;
 
         default:
             echo "Unknown command \n";

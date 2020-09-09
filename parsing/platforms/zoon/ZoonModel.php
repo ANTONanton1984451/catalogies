@@ -1,5 +1,4 @@
 <?php
-
 // todo: Прикрутить транзакции
 // todo: Проводить логирование результата работы
 // todo: Проверка на успешность записи, если неудача, exception - rollback - logger
@@ -15,13 +14,14 @@ class ZoonModel implements ModelInterface {
     private $sourceConfig;
     private $sourceHash;
     private $sourceStatus;
-    private $sourceTrack;
 
     private $beforeHalfYearTimestamp;
 
     private $countReviews = 0;
     private $maxDate = 0;
     private $minDate = 0;
+
+    private $notify;
 
     private $constInfo = [
         'platform' => 'zoon',
@@ -35,26 +35,26 @@ class ZoonModel implements ModelInterface {
 
     /**
      * Записывает в поля значения конфига для текущей ссылки
-     *
+
      * @param $config
      */
     public function setConfig($config) {
         $this->sourceStatus = $config['handled'];
         $this->sourceHash = $config['source_hash'];
-        $this->sourceTrack = $config['track'];
         $this->constInfo['source_hash_key'] = $config['source_hash'];
+
         if ($this->sourceStatus === self::SOURCE_HANDLED) {
             $sourceConfig = json_decode($config['config'], true);
             $this->maxDate = $sourceConfig['max_date'];
         }
     }
 
-    /**
-     * Обрабатывает записи, в зависимости от их содержимого.
-     *
+    /** Обрабатывает записи, в зависимости от их содержимого.
+
      * @param $records object|array
      */
     public function writeData($records) {
+
         if (is_object($records)) {
             if ($records->type === self::TYPE_METARECORD){
                 $this->writeMetaRecord($records);
@@ -80,7 +80,6 @@ class ZoonModel implements ModelInterface {
         $this->minDate = $records[0]['date'];
 
         foreach ($records as $record) {
-
             if ($record['date'] > $datePoint) {
                 $result[] = $record;
                 $this->countReviews++;
@@ -137,11 +136,10 @@ class ZoonModel implements ModelInterface {
 
     /** Обращается к стороннему сервису, которые формирует очередь последующей обработки этой ссылки */
     private function writeTaskQueue() {
-        if ($this->sourceStatus === "NEW") {
+        if ($this->sourceStatus === self::SOURCE_NEW) {
             (new TaskQueueController())->insertTaskQueue($this->countReviews, $this->minDate, $this->sourceHash);
         } else {
             (new TaskQueueController())->updateTaskQueue($this->sourceHash);
         }
     }
-
 }

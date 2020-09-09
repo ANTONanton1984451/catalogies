@@ -18,8 +18,8 @@ class ParserManager implements ConstantInterfaces
         "'topdealers'",
         "'yell'"
     ];
-
-    const SOURCES_LIMIT = 2;
+    
+    const SOURCES_LIMIT = 3;
 
     private $worker;
     private $sources = [];
