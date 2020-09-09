@@ -38,7 +38,7 @@ class ParserManager implements ConstantInterfaces {
             $parser->setModel($parser_factory->buildModel());
 
             $parser->parseSource();
-            $this->notifications[] = $this->formNotification($parser,$source);
+            $this->notifications[] = $parser->generateNotifications();
 
         }
         $this->notify();
@@ -47,28 +47,12 @@ class ParserManager implements ConstantInterfaces {
     }
 
     /**
-     * @param Parser $parser
-     * @param array $source
-     * @return array
-     */
-    private function formNotification(Parser $parser,array $source):array
-    {
-        $source_notification =  ['message'=>$parser->generateJsonMessage(),
-                                  'hash'=>$source['source_hash']];
-
-        if($source['handled'] === self::SOURCE_HANDLED){
-            $source_notification['track'] = $source['track'];
-        }
-
-        return $source_notification;
-    }
-
-    /**
      * todo:пока заглушка
+     * todo:нужно поставить проверку на пустой контейнер
      */
     private function notify():void
     {
-        var_dump($this->notifications);
+        var_dump(json_encode($this->notifications));
     }
 
     private function getActualSources($worker) {

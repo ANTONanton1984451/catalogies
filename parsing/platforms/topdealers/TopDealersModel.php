@@ -15,6 +15,7 @@ use parsing\services\TaskQueueController;
 class TopDealersModel implements ModelInterface
 {
     private const PLATFORM = 'topdealers';
+    private const ERROR_MESSAGE = 'Cannot get information from link';
 
     private $constInfo;
 
@@ -24,14 +25,17 @@ class TopDealersModel implements ModelInterface
     private $dataBase;
     private $taskQueueController;
     //todo:Нужно продумать момент,когда ссылка ломанная
-    private $notifications = [];
+    private $notifications = ['type'=>self::TYPE_ERROR,
+                              'container'=>self::ERROR_MESSAGE];
 
     public function __construct(DatabaseShell $db,TaskQueueController $controller)
     {
         $this->dataBase = $db;
         $this->taskQueueController = $controller;
+
         $this->constInfo['platform'] = self::PLATFORM;
         $this->constInfo['is_answered'] = false;
+
     }
 
     /**
@@ -44,27 +48,14 @@ class TopDealersModel implements ModelInterface
 
         $this->updateConfig($data['config']);
         $this->updateMetaInfo($data['meta_info']);
-
         if(!empty($data['reviews'])){
-            $this->setNotifications($data['reviews']);
+            $this->insertReviews($data['reviews']);
         }
 
         if($this->handled === self::SOURCE_NEW){
-            $this->notifications = $data['meta_info'];
-            $minimalDateReview = isset($data['reviews'])
-                                 ? $data['reviews'][count($data['reviews'])-1]['date'] : 0;
-
-            $this->insertTaskQueue(count($data['reviews']),
-                                   $minimalDateReview,
-                                   $this->constInfo['source_hash_key']);
-
-            $this->dataBase->updateSourceReview($this->constInfo['source_hash_key'],['handled'=>'HANDLED']);
-
+            $this->writeNewData($data);
         }elseif ($this->handled === self::SOURCE_HANDLED){
-            if(!empty($data['reviews'])){
-                $this->setNotifications($data['reviews']);
-            }
-            $this->taskQueueController->updateTaskQueue($this->constInfo['source_hash_key']);
+           $this->writeHandledData($data);
         }
     }
 
@@ -75,25 +66,8 @@ class TopDealersModel implements ModelInterface
     {
         $this->constInfo['source_hash_key'] = $config['source_hash'];
         $this->handled = $config['handled'];
-
-    }
-
-    /**
-     * @param array $reviews
-     * собирает отзывы для уведомления в отдельный массив
-     */
-    private function setNotifications(array $reviews):void
-    {
-        switch ($this->track){
-            case self::TRACK_ALL:
-                $this->notifications = array_merge($this->notifications,$reviews);
-                break;
-            case self::TRACK_NEGATIVE:
-                $this->notifications = array_merge($this->notifications,$this->catchNegative($reviews));
-                break;
-            default:
-                $this->notifications = [];
-        }
+        $this->track = $config['track'];
+        $this->setConstInfoNotifications($config);
     }
 
     /**
@@ -102,6 +76,66 @@ class TopDealersModel implements ModelInterface
     public function getNotifications(): array
     {
         return $this->notifications;
+    }
+
+    /**
+     * @param array $config
+     */
+    private function setConstInfoNotifications(array $config):void
+    {
+        $this->notifications['hash'] = $config['source_hash'];
+        $this->notifications['track'] = $config['track'];
+    }
+
+    /**
+     * @param array $data
+     */
+    private function writeNewData(array $data):void
+    {
+        $this->notifications['container'] = $data['meta_info'];
+        $this->notifications['type'] = self::TYPE_METARECORD;
+
+        $minimalDateReview = isset($data['reviews'])
+                             ?$data['reviews'][count($data['reviews'])-1]['date']
+                             : 0;
+
+        $this->insertTaskQueue(count($data['reviews']),
+            $minimalDateReview,
+            $this->constInfo['source_hash_key']);
+
+        $this->dataBase->updateSourceReview($this->constInfo['source_hash_key'],['handled'=>self::SOURCE_HANDLED]);
+    }
+
+    /**
+     * @param array $data
+     */
+    private function writeHandledData(array $data):void
+    {
+        if(!empty($data['reviews'])){
+            $this->setReviewNotifications($data['reviews']);
+        }
+        if($this->notifications['type'] === self::TYPE_ERROR){
+            $this->notifications['container'] = [];
+        }
+        $this->taskQueueController->updateTaskQueue($this->constInfo['source_hash_key']);
+    }
+
+    /**
+     * @param array $reviews
+     * собирает отзывы для уведомления в отдельный массив
+     */
+    private function setReviewNotifications(array $reviews):void
+    {
+        $this->notifications['type'] = self::TYPE_REVIEWS;
+        $this->notifications['container'] = [];
+        switch ($this->track){
+            case self::TRACK_ALL:
+                $this->notifications['container'] = array_merge($this->notifications['container'],$reviews);
+                break;
+            case self::TRACK_NEGATIVE:
+                $this->notifications['container'] = array_merge($this->notifications['container'],$this->catchNegative($reviews));
+                break;
+        }
     }
 
     /**
@@ -128,15 +162,12 @@ class TopDealersModel implements ModelInterface
     }
 
     /**
-     * @param string $meta
-     *
+     * @param array $meta
      */
     private function updateMetaInfo(array $meta):void
     {
-        $this->dataBase->updateSourceReview(
-            $this->constInfo['source_hash_key'],
-            ['source_meta_info'=>json_encode($meta)]
-        );
+        $this->dataBase->updateSourceReview($this->constInfo['source_hash_key'],
+                                            ['source_meta_info'=>json_encode($meta)]);
     }
 
     /**

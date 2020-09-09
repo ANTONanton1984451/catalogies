@@ -112,6 +112,9 @@ class MigrationsManager
                         "BOOLEAN",
                         "NOT NULL"
                     ],
+                    "answer" => [
+                        "LONGTEXT"
+                    ],
                     "rating" => [
                         "TINYINT(2)",
                         "NOT NULL"
@@ -165,6 +168,7 @@ class MigrationsManager
         ");
     }
 
+
     public function seedDatabase() {
         $platforms = [
 //            'flamp',
@@ -206,8 +210,8 @@ class MigrationsManager
 
         foreach ($platforms as $platform) {
 
-            $sources = $platform . "_links";
 
+            $sources = $platform . "_links";
             foreach ($$sources as $source) {
                 $db = new DatabaseShell();
                 $db->insertSourceReview([
@@ -221,61 +225,63 @@ class MigrationsManager
             }
         }
 
-//        $google_links = [
-//            [
-//                'source'=>'accounts/101148201288830043360/locations/5839617167530752762',
-//                'config'=>[
-//                    'token_info'=>[
-//                          'access_token' =>  'ya29.a0AfH6SMClm14SrVXboygJiAhw9IckyEg5pYsCE64YMLsq30RbxQSoJtUcTHtI9GsiTQD6rCAWjwoXQdJ1E-vZ8GNAi5IhVXCHGQn14xQpcFhYbeeribO4GZVctAp9p7YwZEZugc1zftYmUB9gzGAojDIwKJspZbFZquc',
-//                          'expires_in' =>  3599,
-//                          'refresh_token' => '1//0civO_apGzWFeCgYIARAAGAwSNwF-L9Ir01TiziSGGG33fFDsSFaPwffgvsjwetQhqAYpwjmKMjJs-RPuxOR9UwP9PU61nfZmDvc',
-//                          'scope' =>  'https://www.googleapis.com/auth/business.manage',
-//                          'token_type' => 'Bearer',
-//                          'created' => 1598615609
-//                    ]
-//                ]
-//            ],
-//            [
-//                'source'=>'accounts/101148201288830043360/locations/2321278413977180698',
-//                'config'=>[
-//                    'token_info'=>[
-//                        'access_token' =>  'ya29.a0AfH6SMClm14SrVXboygJiAhw9IckyEg5pYsCE64YMLsq30RbxQSoJtUcTHtI9GsiTQD6rCAWjwoXQdJ1E-vZ8GNAi5IhVXCHGQn14xQpcFhYbeeribO4GZVctAp9p7YwZEZugc1zftYmUB9gzGAojDIwKJspZbFZquc',
-//                        'expires_in' =>  3599,
-//                        'refresh_token' => '1//0civO_apGzWFeCgYIARAAGAwSNwF-L9Ir01TiziSGGG33fFDsSFaPwffgvsjwetQhqAYpwjmKMjJs-RPuxOR9UwP9PU61nfZmDvc',
-//                        'scope' =>  'https://www.googleapis.com/auth/business.manage',
-//                        'token_type' => 'Bearer',
-//                        'created' => 1598615609
-//                    ]
-//                ]
-//            ]
-//        ];
-//
-//        foreach ($google_links as $source){
-//            $db = new DatabaseShell();
-//            $db->insertSourceReview([
-//                'source_hash' => md5($source['source']),
-//                'platform' => 'google',
-//                'source' => $source['source'],
-//                'actual' => 'ACTIVE',
-//                'track' => 'ALL',
-//                'handled' => 'NEW',
-//                'source_config'=>json_encode($source['config'])
-//            ]);
-//        }
+
+        $google_links = [
+            [
+                'source'=>'accounts/101148201288830043360/locations/5839617167530752762',
+                'config'=>[
+                    'token_info'=>[
+                          'access_token' =>  'ya29.a0AfH6SMClm14SrVXboygJiAhw9IckyEg5pYsCE64YMLsq30RbxQSoJtUcTHtI9GsiTQD6rCAWjwoXQdJ1E-vZ8GNAi5IhVXCHGQn14xQpcFhYbeeribO4GZVctAp9p7YwZEZugc1zftYmUB9gzGAojDIwKJspZbFZquc',
+                          'expires_in' =>  3599,
+                          'refresh_token' => '1//0civO_apGzWFeCgYIARAAGAwSNwF-L9Ir01TiziSGGG33fFDsSFaPwffgvsjwetQhqAYpwjmKMjJs-RPuxOR9UwP9PU61nfZmDvc',
+                          'scope' =>  'https://www.googleapis.com/auth/business.manage',
+                          'token_type' => 'Bearer',
+                          'created' => 1598615609
+                    ]
+                ]
+            ],
+            [
+                'source'=>'accounts/101148201288830043360/locations/2321278413977180698',
+                'config'=>[
+                    'token_info'=>[
+                        'access_token' =>  'ya29.a0AfH6SMClm14SrVXboygJiAhw9IckyEg5pYsCE64YMLsq30RbxQSoJtUcTHtI9GsiTQD6rCAWjwoXQdJ1E-vZ8GNAi5IhVXCHGQn14xQpcFhYbeeribO4GZVctAp9p7YwZEZugc1zftYmUB9gzGAojDIwKJspZbFZquc',
+                        'expires_in' =>  3599,
+                        'refresh_token' => '1//0civO_apGzWFeCgYIARAAGAwSNwF-L9Ir01TiziSGGG33fFDsSFaPwffgvsjwetQhqAYpwjmKMjJs-RPuxOR9UwP9PU61nfZmDvc',
+                        'scope' =>  'https://www.googleapis.com/auth/business.manage',
+                        'token_type' => 'Bearer',
+                        'created' => 1598615609
+                    ]
+                ]
+            ]
+        ];
+
+        foreach ($google_links as $source){
+            $db = new DatabaseShell();
+            $db->insertSourceReview([
+                'source_hash' => md5($source['source']),
+                'platform' => 'google',
+                'source' => $source['source'],
+                'actual' => 'ACTIVE',
+                'track' => 'ALL',
+                'handled' => 'NEW',
+                'source_config'=>json_encode($source['config'])
+            ]);
+        }
     }
 
 
-    private function getConnection()
-        {
-            return new Medoo([
-                'database_type' => 'mysql',
-                'database_name' => DATABASE,
-                'server' => 'localhost',
-                'username' => DB_USER,
-                'password' => DB_PASSWORD,
-                'option' => [
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-                ]
-            ]);
-        }
+
+    private function getConnection():Medoo
+    {
+        return new Medoo([
+            'database_type' => 'mysql',
+            'database_name' => DATABASE,
+            'server' => 'localhost',
+            'username' => DB_USER,
+            'password' => DB_PASSWORD,
+            'option' => [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+            ]
+        ]);
+    }
 }

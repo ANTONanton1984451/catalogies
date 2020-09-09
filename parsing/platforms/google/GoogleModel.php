@@ -9,12 +9,17 @@ use parsing\factories\factory_interfaces\ModelInterface;
 use parsing\logger\LoggerManager;
 use parsing\services\TaskQueueController;
 
+/**
+ * Class GoogleModel
+ * @package parsing\platforms\google
+ */
 class GoogleModel implements ModelInterface
 {
 
     private const PLATFORM = 'google';
     private const CONFIG_NOT_EMPTY = true;
     private const CONFIG_EMPTY = false;
+    private const ERROR_MESSAGE = 'Cannot get information from link';
 
     private $dataBase;
     private $queueController;
@@ -22,7 +27,8 @@ class GoogleModel implements ModelInterface
     private $handled;
     private $track;
 
-    private $notifications = [];
+    private $notifications = ['type'=>self::TYPE_ERROR,
+                              'container'=>self::ERROR_MESSAGE];
     private $tempReviews;
     private $reviewCount = 0;
 
@@ -47,6 +53,7 @@ class GoogleModel implements ModelInterface
        }elseif($this->handled === self::SOURCE_HANDLED && $this->config_status === self::CONFIG_NOT_EMPTY){
            $this->writeHandledData($data);
        }
+       $this->setNotifications($data);
         LoggerManager::log(LoggerManager::INFO,
                             'Insert data|GoogleModel',
                                     ['hash'=>$this->source_hash]);
@@ -57,7 +64,11 @@ class GoogleModel implements ModelInterface
      * Метод вылидирует конфиги и если они не валидны,то фиксирует этот момент в логе и завершает работу модели
      */
     public function setConfig($config)
-    {   if($this->validateConfig($config)){
+    {
+        if($this->validateConfig($config)){
+
+            $this->setConstInfoNotifications($config);
+
             $this->source_hash = $config['source_hash'];
             $this->handled = $config['handled'];
             $this->track = $config['track'];
@@ -65,7 +76,7 @@ class GoogleModel implements ModelInterface
         }else{
             LoggerManager::log(LoggerManager::ERROR,'Invalid config values|GoogleModel',
                                 ['config'=>$config]);
-        $this->config_status = self::CONFIG_EMPTY;
+            $this->config_status = self::CONFIG_EMPTY;
         }
 
     }
@@ -77,6 +88,38 @@ class GoogleModel implements ModelInterface
     {
         return $this->notifications;
     }
+
+    /**
+     * @param array $data
+     * Устанавливает оповещения в зависимости от флага handled и входных параметров
+     */
+    private function setNotifications(array $data):void
+    {
+        if($this->handled === self::SOURCE_NEW && empty($data['reviews'])){
+
+            $this->notifications['container'] = array_merge($data['meta'],['added_reviews'=>$this->reviewCount]);
+            $this->notifications['type'] = self::TYPE_METARECORD;
+
+        }elseif ($this->handled === self::SOURCE_HANDLED){
+            if(!empty($data['reviews'])){
+                $this->setReviewNotifications($data['reviews']);
+            }
+            if($this->reviewCount === 0){
+                $this->notifications['container'] = [];
+            }
+        }
+    }
+
+    /**
+     * @param array $config
+     */
+    private function setConstInfoNotifications(array $config):void
+    {
+        $this->notifications['hash'] = $config['source_hash'];
+        $this->notifications['track'] = $config['track'];
+    }
+
+
 
     /**
      * @param array $config
@@ -103,10 +146,9 @@ class GoogleModel implements ModelInterface
      */
     private function writeHandledData(array $data):void
     {
-
         if(!empty($data['reviews'])){
+            $this->reviewCount += count($data['reviews']);
             $this->insertReviews($data['reviews']);
-            $this->setNotifications($data['reviews']);
             $this->updateConfig($data['config']);
         }else{
             $columns = ['source_meta_info'=>json_encode($data['meta'])];
@@ -129,9 +171,9 @@ class GoogleModel implements ModelInterface
             $this->updateConfig($data['config']);
 
         }else{
+
             $columns = [ 'source_meta_info' => json_encode($data['meta']),
                          'handled'=> self::SOURCE_HANDLED];
-            $this->notifications = $data['meta'];
             $this->dataBase->updateSourceReview($this->source_hash,$columns);
             $this->queueController->insertTaskQueue($this->source_hash,
                                                     $this->reviewCount,
@@ -153,17 +195,18 @@ class GoogleModel implements ModelInterface
      * @param array $reviews
      * собирает отзывы для уведомления в отдельный массив
      */
-    private function setNotifications(array $reviews):void
+    private function setReviewNotifications(array $reviews):void
     {
+        $this->notifications['type'] = self::TYPE_REVIEWS;
+        $this->notifications['container'] = [];
+
         switch ($this->track){
             case self::TRACK_ALL:
-                $this->notifications = array_merge($this->notifications,$reviews);
+                $this->notifications['container'] = array_merge($this->notifications['container'],$reviews);
                 break;
             case self::TRACK_NEGATIVE:
-                $this->notifications = array_merge($this->notifications,$this->catchNegative($reviews));
+                $this->notifications['container'] = array_merge($this->notifications['container'],$this->catchNegative($reviews));
                 break;
-            default:
-                $this->notifications = [];
         }
     }
 

@@ -62,17 +62,20 @@ class GoogleFilter implements FilterInterface
           $review['rating']       = $ratingInt;
           $review['date']         = strtotime($v['updateTime']);
           $review['tonal']        = $this->ratingToTonal($ratingInt);
+
           if(isset($v['comment'])){
               $review['text'] = $this->splitText($v['comment']);
           }else{
               $review['text'] = '';
           }
+
           if(isset($v['reviewReply'])){
               $review['is_answered'] = true;
+              $review['answer'] = $v['reviewReply']['comment'];
           }else{
               $review['is_answered'] = false;
+              $review['answer'] = '';
           }
-
           $this->buffer_info['reviews'][] = $review;
       }
 
@@ -87,15 +90,15 @@ class GoogleFilter implements FilterInterface
   {
       switch ($rating){
           case 'FIVE':
-              return 5;
+              return 10;
           case 'FOUR':
-              return 4;
+              return 8;
           case 'THREE':
-              return 3;
+              return 6;
           case 'TWO':
-              return 2;
+              return 4;
           case 'ONE':
-              return 1;
+              return 2;
           default:
               return -1;
       }
@@ -109,13 +112,13 @@ class GoogleFilter implements FilterInterface
      */
   private function ratingToTonal(int $rating):string
   {
-      if($rating > 0 && $rating < 4 ){
+      if($rating > 0 && $rating < 8 ){
           return self::TONAL_NEGATIVE;
       }
-      if($rating === 4){
+      if($rating === 8){
           return self::TONAL_NEUTRAL;
       }
-      if($rating === 5){
+      if($rating === 10){
           return self::TONAL_POSITIVE;
       }
       return 'UNDEFINED';
