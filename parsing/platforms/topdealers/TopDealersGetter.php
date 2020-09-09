@@ -73,6 +73,7 @@ class TopDealersGetter implements GetterInterface
         }
 
         \phpQuery::unloadDocuments();
+        LoggerManager::log(LoggerManager::DEBUG,'|TopDealersGetter');
         return $this->mainData;
     }
 
@@ -90,6 +91,10 @@ class TopDealersGetter implements GetterInterface
 
     }
 
+    /**
+     * @param int $timeToCut
+     * Метод формирует данные для отправки,принимает время для отсеивания отзывов
+     */
     private  function formMainData(int $timeToCut):void
     {
         $this->setMetaInfo();

@@ -105,8 +105,8 @@ class GoogleGetter  implements GetterInterface
         }
 
         LoggerManager::log(LoggerManager::INFO,
-                                'send main data|GoogleGetter',
-                                        ['trigger'=>$this->trigger,'source'=>$this->source]
+                                '|GoogleGetter',
+                                        ['source'=>$this->source]
                           );
         return $this->mainData;
     }
