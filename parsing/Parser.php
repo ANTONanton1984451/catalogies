@@ -35,20 +35,22 @@ class Parser implements ConstantInterfaces
 
         while ($this->status != self::MESSAGE_END) {
             $buffer = $this->getter->getNextRecords();
+            echo 1;
             if ($buffer === self::END_CODE) {
                 $this->status = self::MESSAGE_END;
                 continue;
             }
 
             $buffer = $this->filter->clearData($buffer);
+            echo 2;
             $this->model->writeData($buffer);
+            echo 3;
         }
 
 
         echo "I'm parsed this source --> " . $this->config['source'] . "\n";
 
         $this->notifications = $this->model->getNotifications();
-
     }
 
     public function setGetter(GetterInterface $getter): void {

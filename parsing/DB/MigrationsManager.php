@@ -117,7 +117,7 @@ class MigrationsManager
                         "NOT NULL"
                     ],
                     "tonal" => [
-                        "ENUM ('NEGATIVE', 'NEUTRAL', 'POSITIVE')"
+                        "ENUM ('NEGATIVE', 'NEUTRAL', 'POSITIVE', 'NONE')"
                     ],
                     "date" => [
                         "BIGINT",
@@ -169,8 +169,8 @@ class MigrationsManager
         $platforms = [
 //            'flamp',
 //            'topdealers',
-//            'yell',
-            'zoon',
+            'yell',
+//            'zoon',
         ];
 
         $flamp_links = [

@@ -2,7 +2,7 @@
 
 require_once "vendor/autoload.php";
 require_once "autoloader.php";
-require_once "const_configs.php";
+require_once "config.php";
 
 use parsing\DB\MigrationsManager;
 

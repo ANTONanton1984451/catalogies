@@ -133,9 +133,9 @@ class GoogleModel implements ModelInterface
                          'handled'=> self::SOURCE_HANDLED];
             $this->notifications = $data['meta'];
             $this->dataBase->updateSourceReview($this->source_hash,$columns);
-            $this->queueController->insertTaskQueue($this->reviewCount,
-                                                    $this->tempReviews[count($this->tempReviews)-1]['date'],
-                                                    $this->source_hash);
+            $this->queueController->insertTaskQueue($this->source_hash,
+                                                    $this->reviewCount,
+                                                    $this->tempReviews[count($this->tempReviews)-1]['date']);
         }
     }
 

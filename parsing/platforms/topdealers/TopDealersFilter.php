@@ -12,18 +12,18 @@ class TopDealersFilter implements FilterInterface
     private $mainData = [];
 
     /**
-     * @param $raw_data
+     * @param $records
      * @return array
      * Преобразовывает данные в приемлемый вид
      */
-    public function clearData($raw_data)
+    public function clearData($records)
     {
-        if(!empty($raw_data['reviews'])){
-            $this->formReview($raw_data['reviews']);
+        if(!empty($records['reviews'])){
+            $this->formReview($records['reviews']);
         }
 
-       $this->setMetaInfo($raw_data['meta_info']);
-       $this->setInnerConfig($raw_data['config']);
+       $this->setMetaInfo($records['meta_info']);
+       $this->setInnerConfig($records['config']);
 
        return $this->mainData;
     }

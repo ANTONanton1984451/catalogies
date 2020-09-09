@@ -7,18 +7,7 @@ use parsing\factories\factory_interfaces\ConstantInterfaces;
 use parsing\factories\ParserFactory;
 use parsing\DB\DatabaseShell;
 
-class ParserManager implements ConstantInterfaces
-{
-    const HIGH_PRIORITY_PLATFORMS = [
-        "'google'",
-        "'zoon'"
-    ];
-
-    const LOW_PRIORITY_PLATFORMS = [
-        "'topdealers'",
-        "'yell'"
-    ];
-    
+class ParserManager implements ConstantInterfaces {
     const SOURCES_LIMIT = 3;
 
     private $worker;
@@ -37,7 +26,6 @@ class ParserManager implements ConstantInterfaces
         }
 
         foreach ($this->sources as $source) {
-
             try {
                 $parser_factory = (new ParserFactory())->getFactory($source['platform']);
             } catch (Exception $e) {
@@ -87,16 +75,16 @@ class ParserManager implements ConstantInterfaces
         switch ($worker) {
             case NEW_WORKER:
                 return (new DatabaseShell())
-                    ->getSources(self::SOURCES_LIMIT, "NEW");
+                    ->getSources(self::SOURCES_LIMIT, self::SOURCE_NEW);
 
 
             case HIGH_PRIORITY_WORKER:
                 return (new DatabaseShell())
-                    ->getSources(self::SOURCES_LIMIT, "HANDLED", self::HIGH_PRIORITY_PLATFORMS);
+                    ->getSources(self::SOURCES_LIMIT, self::SOURCE_HANDLED, HIGH_PRIORITY_PLATFORMS);
 
             case LOW_PRIORITY_WORKER:
                 return (new DatabaseShell())
-                    ->getSources(self::SOURCES_LIMIT, "HANDLED", self::LOW_PRIORITY_PLATFORMS);
+                    ->getSources(self::SOURCES_LIMIT, self::SOURCE_HANDLED, LOW_PRIORITY_PLATFORMS);
 
             default:
                 throw new Exception('Unknown worker');

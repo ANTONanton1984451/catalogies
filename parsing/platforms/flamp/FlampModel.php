@@ -104,12 +104,12 @@ class FlampModel implements ModelInterface {
 
     /** Обращается к стороннему сервису, которые формирует очередь последующей обработки этой ссылки */
     private function writeTaskQueue() {
-        if ($this->status === "NEW") {
+        if ($this->status === self::SOURCE_NEW) {
             if ($this->minDate === PHP_INT_MAX) {
                 $this->minDate = 0;
             }
             (new TaskQueueController())
-                ->insertTaskQueue($this->countReviews, $this->minDate, $this->constInfo['source_hash_key']);
+                ->insertTaskQueue($this->constInfo['source_hash_key'], $this->countReviews, $this->minDate);
         } else {
             (new TaskQueueController())->updateTaskQueue($this->constInfo['source_hash_key']);
         }

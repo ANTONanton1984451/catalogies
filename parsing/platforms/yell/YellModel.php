@@ -6,63 +6,65 @@ use parsing\DB\DatabaseShell;
 use parsing\factories\factory_interfaces\ModelInterface;
 use parsing\services\TaskQueueController;
 
-class YellModel implements ModelInterface
-{
+class YellModel implements ModelInterface {
 
     private $sourceConfig;
+    private $sourceTrack;
     private $sourceHash;
-    private $handled;
+    private $sourceStatus;
 
     private $beforeHalfYearTimestamp;
+
+    private $countReviews = 0;
     private $maxDate = 0;
     private $minDate = 0;
-    private $countReviews = 0;
 
     private $constInfo = [
         'platform' => 'yell',
     ];
+    private $notify;
 
     public function __construct() {
-        $this->beforeHalfYearTimestamp = getdate()[0] - self::HALF_YEAR_TIMESTAMP;
+        $this->beforeHalfYearTimestamp = time() - self::HALF_YEAR_TIMESTAMP;
     }
 
-    public function setConfig($config) {
-        $this->handled = $config['handled'];
+    public function setConfig($config) : void {
+        $this->sourceStatus = $config['handled'];
+        $this->sourceTrack = $config['track'];
         $this->sourceHash = $config['source_hash'];
         $this->constInfo['source_hash_key'] = $config['source_hash'];
 
-        if ($this->handled === "HANDLED") {
+        if ($this->sourceStatus === "HANDLED") {
             $sourceConfig = json_decode($config['config'], true);
             $this->maxDate = $sourceConfig['max_date'];
         }
     }
 
-    public function writeData($records) : void
-    {
-        if (isset($records['average_mark'])) {
+    public function writeData($records) : void {
+        if (is_object($records)) {
             $this->writeMetaRecord($records);
             $this->writeTaskQueue();
-        } else {
+            $this->generateNotifications();
+
+        } elseif (is_array($records)) {
             $this->writeReviews($records);
         }
     }
 
     private function writeReviews($records) {
-        if ($this->handled === "NEW") {
-            $datePoint = $this->beforeHalfYearTimestamp;
-        } else {
+        if ($this->sourceStatus === self::SOURCE_HANDLED && $this->maxDate !== 0) {
             $datePoint = $this->maxDate;
+        } else {
+            $datePoint = $this->beforeHalfYearTimestamp;
         }
-
-        $tempMaxDate = 0;
 
         foreach ($records as $record) {
             if ($record['date'] > $datePoint) {
                 $result[] = $record;
                 $this->countReviews++;
 
-                if ($record['date'] > $tempMaxDate) {
-                    $tempMaxDate = $record['date'];
+                if ($record['date'] > $this->maxDate) {
+                    $this->maxDate = $record['date'];
                 }
 
                 if ($record['date'] < $this->minDate) {
@@ -71,19 +73,21 @@ class YellModel implements ModelInterface
             }
         }
 
-        if ($tempMaxDate > $this->maxDate && $tempMaxDate != 0) {
-            $this->maxDate = $tempMaxDate;
-        }
-
         if (isset($result)) {
             (new DatabaseShell())->insertReviews($result, $this->constInfo);
+
+            if ($this->sourceStatus === self::SOURCE_HANDLED) {
+                $this->notify['type'] = self::TYPE_REVIEWS;
+                $this->notify['container'] = $result;
+            }
         }
     }
 
     private function writeMetaRecord($records) {
         $sourceMeta = [
-            'count_reviews' => $records['count_reviews'],
-            'average_mark' => $records['average_mark'],
+            'count_reviews' => $records->count_reviews,
+            'count_added_reviews' => $this->countReviews,
+            'average_mark' => $records->average_mark,
         ];
 
         if ($this->maxDate != 0) {
@@ -92,14 +96,10 @@ class YellModel implements ModelInterface
             $date = $this->sourceConfig['max_date'];
         }
 
-        if (isset($records['hash'])) {
-            $hash = $records['hash'];
+        if (isset($records->hash)) {
+            $hash = $records->hash;
         } else {
             $hash = $this->sourceConfig['old_hash'];
-        }
-
-        if ($this->handled === "NEW") {
-            $this->handled = "HANDLED";
         }
 
         $sourceConfig = [
@@ -110,15 +110,28 @@ class YellModel implements ModelInterface
         (new DatabaseShell())->updateSourceReview($this->sourceHash, [
             'source_meta_info' => json_encode($sourceMeta),
             'source_config' => json_encode($sourceConfig),
-            'handled' => $this->handled,
+            'handled' => self::SOURCE_HANDLED,
         ]);
     }
 
     private function writeTaskQueue() {
-        if ($this->handled === "NEW") {
-            (new TaskQueueController())->insertTaskQueue($this->countReviews, $this->minDate, $this->sourceHash);
+        if ($this->sourceStatus === self::SOURCE_NEW) {
+            (new TaskQueueController())->insertTaskQueue($this->sourceHash, $this->countReviews, $this->minDate);
         } else {
             (new TaskQueueController())->updateTaskQueue($this->sourceHash);
         }
+    }
+
+    private function generateNotifications() {
+        $sourceConfig = [
+            'hash' => $this->sourceHash,
+            'track' => $this->sourceTrack,
+        ];
+
+
+    }
+
+    public function getNotifications(): array {
+
     }
 }

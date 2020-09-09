@@ -1,6 +1,9 @@
 <?php
 
-// todo: Проверять раз в сутки результаты по одному парсеру при помощи безголового браузера
+// todo: Продумать варианты проверки, и запасные варианты, на случай изменений на сайте, в API и т.д.
+
+// todo: ZOON, FLAMP, YELL -> если создавать документ для проверки даты последнего отзыва,
+//          можно существенно ускорить время работы парсера при новых ссылках
 
 namespace parsing\platforms\zoon;
 
@@ -13,23 +16,22 @@ use phpQuery;
 
 class ZoonGetter implements GetterInterface {
 
-    const REVIEWS_LIMIT = 50;
+    const REVIEWS_LIMIT = 102;
     const FIRST_PAGE = 0;
 
     const QUERY_CONSTANT_PARAMETERS = "https://zoon.ru/js.php?area=service&action=CommentList&owner[]=organization&" .
     "is_widget=1&strategy_options[with_photo]=0&allow_comment=0&allow_share=0&limit=" . self::REVIEWS_LIMIT;
 
+    private $addQueryParameters;
     private $sourceStatus;
     private $metaRecord;
     private $oldHash;
-    private $addQueryParameters;
 
     private $isReadyQueue = false;
     private $queue;
 
     private $isEnd = false;
     private $activePage = 0;
-
 
     public function setConfig($config) {
         if ($this->validateConfig($config) === true) {
@@ -121,7 +123,7 @@ class ZoonGetter implements GetterInterface {
             $records = $this->getReviews($this->activePage);
 
             if ($this->activePage === self::FIRST_PAGE) {
-                $this->saveFirstPage($records);
+                $this->saveFirstPage($records->list);
             }
 
             $this->activePage++;
@@ -135,7 +137,6 @@ class ZoonGetter implements GetterInterface {
         }
         return $records;
     }
-
 
     /**
      * Функция получает отзывы по данной ссылке, и сравнивает их с полученными ранее.
@@ -151,6 +152,7 @@ class ZoonGetter implements GetterInterface {
 
             if ($this->isEqualsHash(md5($records->list)) === false) {
                 $this->queue [] = $records;
+                $this->saveFirstPage($records->list);
             }
 
             $this->queue [] = $this->getMetaRecord();
@@ -185,7 +187,7 @@ class ZoonGetter implements GetterInterface {
         return $records;
     }
 
-    private function getMetaRecord(){
+    private function getMetaRecord() {
         return $this->metaRecord;
     }
 
@@ -198,6 +200,6 @@ class ZoonGetter implements GetterInterface {
     }
 
     private function saveFirstPage($records) {
-        $this->metaRecord->old_hash = md5($records->list);
+        $this->metaRecord->hash = md5($records);
     }
 }
