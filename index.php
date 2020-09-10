@@ -8,6 +8,7 @@ use parsing\ParserManager;
 use parsing\logger\LoggerManager;
 use Workerman\Worker;
 use Workerman\Timer;
+use parsing\DB\DatabaseShell;
 
 ini_set('error_reporting', E_ALL);
 ini_set('display_errors', 1);
@@ -25,7 +26,7 @@ function loopGo() {
     $newSourcesWorker->onWorkerStart = function ($newSourcesWorker) {
         $timeInterval = 20;
         $timerId = Timer::add($timeInterval, function () {
-            (new ParserManager(NEW_WORKER))->parseSources();
+            (new ParserManager(NEW_WORKER,new DatabaseShell()))->parseSources();
         });
     };
 
@@ -36,7 +37,7 @@ function loopGo() {
     $highPriorityWorker->onWorkerStart = function ($highPriorityWorker) {
         $timeInterval = 20;
         $timerId = Timer::add($timeInterval, function () {
-            (new ParserManager(HIGH_PRIORITY_WORKER))->parseSources();
+            (new ParserManager(HIGH_PRIORITY_WORKER,new DatabaseShell()))->parseSources();
         });
     };
 
@@ -47,7 +48,29 @@ function loopGo() {
     $lowPriorityWorker->onWorkerStart = function ($lowPriorityWorker) {
         $timeInterval = 20;
         $timerId = Timer::add($timeInterval, function () {
-            (new ParserManager(LOW_PRIORITY_WORKER))->parseSources();
+            (new ParserManager(LOW_PRIORITY_WORKER,new DatabaseShell()))->parseSources();
+        });
+    };
+
+    $lowPriorityWorker = new Worker();
+    $lowPriorityWorker->name = "NON COMPLETED sources worker";
+    $lowPriorityWorker->count = 1;
+
+    $lowPriorityWorker->onWorkerStart = function ($lowPriorityWorker) {
+        $timeInterval = 2000;
+        $timerId = Timer::add($timeInterval, function () {
+            (new ParserManager(NON_COMPLETED_WORKER,new DatabaseShell()))->parseSources();
+        });
+    };
+
+    $lowPriorityWorker = new Worker();
+    $lowPriorityWorker->name = "NON UPDATED sources worker";
+    $lowPriorityWorker->count = 1;
+
+    $lowPriorityWorker->onWorkerStart = function ($lowPriorityWorker) {
+        $timeInterval = 2000;
+        $timerId = Timer::add($timeInterval, function () {
+            (new ParserManager(NON_UPDATED_WORKER,new DatabaseShell()))->parseSources();
         });
     };
 

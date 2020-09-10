@@ -7,6 +7,7 @@ namespace parsing\platforms\topdealers;
 use parsing\DB\DatabaseShell;
 use parsing\factories\factory_interfaces\ModelInterface;
 use parsing\services\TaskQueueController;
+use parsing\logger\LoggerManager;
 
 /**
  * Class TopDealersModel
@@ -25,8 +26,11 @@ class TopDealersModel implements ModelInterface
     private $dataBase;
     private $taskQueueController;
     //todo:Нужно продумать момент,когда ссылка ломанная
-    private $notifications = ['type'=>self::TYPE_ERROR,
-                              'container'=>self::ERROR_MESSAGE];
+    private $notifications = ['container'=>[
+                                            'type'=>self::TYPE_ERROR,
+                                            'content'=>self::ERROR_MESSAGE
+                                        ]
+                             ];
 
     public function __construct(DatabaseShell $db,TaskQueueController $controller)
     {
@@ -48,13 +52,10 @@ class TopDealersModel implements ModelInterface
 
         $this->updateConfig($data['config']);
         $this->updateMetaInfo($data['meta_info']);
-        if(!empty($data['reviews'])){
-            $this->insertReviews($data['reviews']);
-        }
 
-        if($this->handled === self::SOURCE_NEW){
+        if($this->isNewOrNonCompleted()){
             $this->writeNewData($data);
-        }elseif ($this->handled === self::SOURCE_HANDLED){
+        }elseif ($this->isHandleOrNonUpdated()){
            $this->writeHandledData($data);
         }
     }
@@ -92,18 +93,31 @@ class TopDealersModel implements ModelInterface
      */
     private function writeNewData(array $data):void
     {
-        $this->notifications['container'] = $data['meta_info'];
-        $this->notifications['type'] = self::TYPE_METARECORD;
+        $this->notifications['container']['content'] = $data['meta_info'];
+        $this->notifications['container']['type'] = self::TYPE_METARECORD;
 
         $minimalDateReview = isset($data['reviews'])
                              ?$data['reviews'][count($data['reviews'])-1]['date']
                              : 0;
+        try {
+            if(!empty($data['reviews'])){
+                $this->insertReviews($data['reviews']);
+            }
 
-        $this->insertTaskQueue(count($data['reviews']),
-            $minimalDateReview,
-            $this->constInfo['source_hash_key']);
+            $this->insertTaskQueue(count($data['reviews']),
+                $minimalDateReview,
+                $this->constInfo['source_hash_key']);
 
-        $this->dataBase->updateSourceReview($this->constInfo['source_hash_key'],['handled'=>self::SOURCE_HANDLED]);
+            $this->dataBase->updateSourceReview($this->constInfo['source_hash_key'],['handled'=>self::SOURCE_HANDLED]);
+        }catch (\PDOException $e){
+            $handled = $this->handled === self::SOURCE_NON_COMPLETED ?
+                                          self::SOURCE_UNPROCESSABLE :
+                                          self::SOURCE_NON_COMPLETED;
+
+            LoggerManager::log(LoggerManager::ERROR,'Ошибка в NEW|TopDealersModel',['handled'=>$handled]);
+            $this->dataBase->rollback($this->constInfo['source_hash_key'],$handled);
+        }
+
     }
 
     /**
@@ -111,13 +125,30 @@ class TopDealersModel implements ModelInterface
      */
     private function writeHandledData(array $data):void
     {
-        if(!empty($data['reviews'])){
-            $this->setReviewNotifications($data['reviews']);
+        try {
+
+            if(!empty($data['reviews'])){
+                $this->setReviewNotifications($data['reviews']);
+                $this->insertReviews($data['reviews']);
+            }
+
+            if($this->notifications['container']['type'] === self::TYPE_ERROR){
+
+                $this->notifications['container']['type'] = self::TYPE_EMPTY;
+                $this->notifications['container']['content'] = [];
+            }
+            $this->taskQueueController->updateTaskQueue($this->constInfo['source_hash_key']);
+
+        }catch (\PDOException $e){
+
+            $handled = $this->handled === self::SOURCE_NON_UPDATED ?
+                                          self::SOURCE_UNPROCESSABLE :
+                                          self::SOURCE_NON_UPDATED;
+            LoggerManager::log(LoggerManager::ERROR,'Ошибка в HANDLED|GoogleModel',['handled'=>$handled]);
+            $this->dataBase->rollback($this->constInfo['source_hash_key'],$handled);
+
         }
-        if($this->notifications['type'] === self::TYPE_ERROR){
-            $this->notifications['container'] = [];
-        }
-        $this->taskQueueController->updateTaskQueue($this->constInfo['source_hash_key']);
+
     }
 
     /**
@@ -126,14 +157,16 @@ class TopDealersModel implements ModelInterface
      */
     private function setReviewNotifications(array $reviews):void
     {
-        $this->notifications['type'] = self::TYPE_REVIEWS;
-        $this->notifications['container'] = [];
+        $this->notifications['container']['type'] = self::TYPE_REVIEWS;
+        $this->notifications['container']['content'] = [];
         switch ($this->track){
             case self::TRACK_ALL:
-                $this->notifications['container'] = array_merge($this->notifications['container'],$reviews);
+                $this->notifications['container']['content'] = array_merge($this->notifications['container']['content'],
+                                                                           $reviews);
                 break;
             case self::TRACK_NEGATIVE:
-                $this->notifications['container'] = array_merge($this->notifications['container'],$this->catchNegative($reviews));
+                $this->notifications['container']['content'] = array_merge($this->notifications['container']['content'],
+                                                                           $this->catchNegative($reviews));
                 break;
         }
     }
@@ -189,5 +222,23 @@ class TopDealersModel implements ModelInterface
             $this->constInfo['source_hash_key'],
             ['source_config'=>$config]
         );
+    }
+
+    /**
+     * @return bool
+     * Метод нужен для сокращения кода в методе GetNextRecords
+     */
+    private function isHandleOrNonUpdated():bool
+    {
+        return ($this->handled === self::SOURCE_HANDLED) || ($this->handled === self::SOURCE_NON_UPDATED);
+    }
+
+    /**
+     * @return bool
+     * Метод нужен для сокращения кода в методе GetNextRecords
+     */
+    private function isNewOrNonCompleted():bool
+    {
+        return ($this->handled === self::SOURCE_NEW) || ($this->handled === self::SOURCE_NON_COMPLETED);
     }
 }

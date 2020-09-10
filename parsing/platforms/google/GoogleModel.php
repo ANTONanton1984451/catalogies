@@ -27,8 +27,11 @@ class GoogleModel implements ModelInterface
     private $handled;
     private $track;
 
-    private $notifications = ['type'=>self::TYPE_ERROR,
-                              'container'=>self::ERROR_MESSAGE];
+    private $notifications = ['container'=>[
+                                            'type'=>self::TYPE_ERROR,
+                                            'content'=>self::ERROR_MESSAGE
+                                            ]
+                             ];
     private $tempReviews;
     private $reviewCount = 0;
 
@@ -48,15 +51,13 @@ class GoogleModel implements ModelInterface
      */
     public function writeData($data)
     {
-       if($this->handled === self::SOURCE_NEW && $this->config_status === self::CONFIG_NOT_EMPTY){
+
+       if($this->isNewOrNonCompleted() && $this->config_status === self::CONFIG_NOT_EMPTY){
            $this->writeNewData($data);
-       }elseif($this->handled === self::SOURCE_HANDLED && $this->config_status === self::CONFIG_NOT_EMPTY){
+       }elseif($this->isHandleOrNonUpdated() && $this->config_status === self::CONFIG_NOT_EMPTY){
            $this->writeHandledData($data);
        }
        $this->setNotifications($data);
-        LoggerManager::log(LoggerManager::INFO,
-                            'Insert data|GoogleModel',
-                                    ['hash'=>$this->source_hash]);
     }
 
     /**
@@ -97,15 +98,16 @@ class GoogleModel implements ModelInterface
     {
         if($this->handled === self::SOURCE_NEW && empty($data['reviews'])){
 
-            $this->notifications['container'] = array_merge($data['meta'],['added_reviews'=>$this->reviewCount]);
-            $this->notifications['type'] = self::TYPE_METARECORD;
+            $this->notifications['container']['content'] = array_merge($data['meta'],['added_reviews'=>$this->reviewCount]);
+            $this->notifications['container']['type'] = self::TYPE_METARECORD;
 
         }elseif ($this->handled === self::SOURCE_HANDLED){
             if(!empty($data['reviews'])){
                 $this->setReviewNotifications($data['reviews']);
             }
             if($this->reviewCount === 0){
-                $this->notifications['container'] = [];
+                $this->notifications['container']['content'] = [];
+                $this->notifications['container']['type'] = self::TYPE_EMPTY;
             }
         }
     }
@@ -146,15 +148,24 @@ class GoogleModel implements ModelInterface
      */
     private function writeHandledData(array $data):void
     {
-        if(!empty($data['reviews'])){
-            $this->reviewCount += count($data['reviews']);
-            $this->insertReviews($data['reviews']);
-            $this->updateConfig($data['config']);
-        }else{
-            $columns = ['source_meta_info'=>json_encode($data['meta'])];
-            $this->dataBase->updateSourceReview($this->source_hash,$columns);
-            $this->queueController->updateTaskQueue($this->source_hash);
+        try {
+            if(!empty($data['reviews'])){
+                $this->reviewCount += count($data['reviews']);
+                $this->insertReviews($data['reviews']);
+                $this->updateConfig($data['config']);
+            }else{
+                $columns = ['source_meta_info'=>json_encode($data['meta'])];
+                $this->dataBase->updateSourceReview($this->source_hash,$columns);
+                $this->queueController->updateTaskQueue($this->source_hash);
+            }
+        }catch (\PDOException $e){
+            $handled = $this->handled === self::SOURCE_NON_UPDATED ?
+                self::SOURCE_UNPROCESSABLE :
+                self::SOURCE_NON_UPDATED;
+            LoggerManager::log(LoggerManager::ERROR,'Ошибка в HANDLED|GoogleModel',['handled'=>$handled]);
+            $this->dataBase->rollback($this->source_hash,$handled);
         }
+
     }
 
     /**
@@ -164,21 +175,35 @@ class GoogleModel implements ModelInterface
      */
     private function writeNewData(array $data):void
     {
-        if(!empty($data['reviews'])){
-            $this->tempReviews = $data['reviews'];//????
-            $this->reviewCount += count($data['reviews']);
-            $this->insertReviews($data['reviews']);
-            $this->updateConfig($data['config']);
+        try {
+            if(!empty($data['reviews'])){
+                $this->tempReviews = $data['reviews'];//????
+                $this->reviewCount += count($data['reviews']);
+                $this->insertReviews($data['reviews']);
+                $this->updateConfig($data['config']);
 
-        }else{
+            }else{
 
-            $columns = [ 'source_meta_info' => json_encode($data['meta']),
-                         'handled'=> self::SOURCE_HANDLED];
-            $this->dataBase->updateSourceReview($this->source_hash,$columns);
-            $this->queueController->insertTaskQueue($this->source_hash,
-                                                    $this->reviewCount,
-                                                    $this->tempReviews[count($this->tempReviews)-1]['date']);
+                $columns = [ 'source_meta_info' => json_encode($data['meta']),
+                             'handled'=> self::SOURCE_HANDLED];
+
+                $this->dataBase->updateSourceReview($this->source_hash,$columns);
+
+                $this->queueController
+                ->insertTaskQueue(
+                    $this->source_hash,
+                    $this->reviewCount,
+                    $this->tempReviews[count($this->tempReviews)-1]['date']
+                );
+            }
+        }catch (\PDOException $e){
+            $handled = $this->handled === self::SOURCE_NON_COMPLETED ?
+                                          self::SOURCE_UNPROCESSABLE :
+                                          self::SOURCE_NON_COMPLETED;
+            LoggerManager::log(LoggerManager::ERROR,'Ошибка в NEW|GoogleModel',['handled'=>$handled]);
+            $this->dataBase->rollback($this->source_hash,$handled);
         }
+
     }
 
     /**
@@ -197,15 +222,17 @@ class GoogleModel implements ModelInterface
      */
     private function setReviewNotifications(array $reviews):void
     {
-        $this->notifications['type'] = self::TYPE_REVIEWS;
-        $this->notifications['container'] = [];
+        $this->notifications['container']['type'] = self::TYPE_REVIEWS;
+        $this->notifications['container']['content'] = [];
 
         switch ($this->track){
             case self::TRACK_ALL:
-                $this->notifications['container'] = array_merge($this->notifications['container'],$reviews);
+                $this->notifications['container']['content'] = array_merge($this->notifications['container']['content'],
+                                                                            $reviews);
                 break;
             case self::TRACK_NEGATIVE:
-                $this->notifications['container'] = array_merge($this->notifications['container'],$this->catchNegative($reviews));
+                $this->notifications['container']['content'] = array_merge($this->notifications['container']['content'],
+                                                                            $this->catchNegative($reviews));
                 break;
         }
     }
@@ -232,6 +259,24 @@ class GoogleModel implements ModelInterface
     {
         $config = json_encode($config);
         $this->dataBase->updateSourceReview($this->source_hash,['source_config'=>$config]);
+    }
+
+    /**
+     * @return bool
+     * Метод нужен для сокращения кода в методе GetNextRecords
+     */
+    private function isHandleOrNonUpdated():bool
+    {
+        return ($this->handled === self::SOURCE_HANDLED) || ($this->handled === self::SOURCE_NON_UPDATED);
+    }
+
+    /**
+     * @return bool
+     * Метод нужен для сокращения кода в методе GetNextRecords
+     */
+    private function isNewOrNonCompleted():bool
+    {
+        return ($this->handled === self::SOURCE_NEW) || ($this->handled === self::SOURCE_NON_COMPLETED);
     }
 
 }
