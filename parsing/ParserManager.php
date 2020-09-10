@@ -13,10 +13,12 @@ class ParserManager implements ConstantInterfaces {
     private $worker;
     private $sources = [];
     private $notifications;
+    private $dataBaseShell;
 
-    public function __construct($worker) {
-        $this->worker = $worker;
-        $this->sources = $this->getActualSources($worker);
+    public function __construct($workerType,DatabaseShell $dataBaseShell) {
+        $this->worker = $workerType;
+        $this->sources = $this->getActualSources($workerType);
+        $this->dataBaseShell = $dataBaseShell;
     }
 
     public function parseSources() {
@@ -52,29 +54,37 @@ class ParserManager implements ConstantInterfaces {
      */
     private function notify():void
     {
-
+        $notificationsForSend = [];
         foreach ($this->notifications as $v){
             if($v['container']['type'] !== self::TYPE_EMPTY){
-                var_dump(json_encode($this->notifications));
+                $notificationsForSend[] = $v;
             }
         }
-
+        var_dump($notificationsForSend);
+        json_encode($notificationsForSend);
     }
 
-    private function getActualSources($worker) {
-        switch ($worker) {
+    private function getActualSources($workerType) {
+        switch ($workerType) {
             case NEW_WORKER:
-                return (new DatabaseShell())
+                return $this->dataBaseShell
                     ->getSources(self::SOURCES_LIMIT, self::SOURCE_NEW);
 
-
             case HIGH_PRIORITY_WORKER:
-                return (new DatabaseShell())
+                return $this->dataBaseShell
                     ->getSources(self::SOURCES_LIMIT, self::SOURCE_HANDLED, HIGH_PRIORITY_PLATFORMS);
 
             case LOW_PRIORITY_WORKER:
-                return (new DatabaseShell())
+                return $this->dataBaseShell
                     ->getSources(self::SOURCES_LIMIT, self::SOURCE_HANDLED, LOW_PRIORITY_PLATFORMS);
+
+            case NON_COMPLETED_WORKER:
+                return $this->dataBaseShell
+                    ->getSources(self::SOURCES_LIMIT, self::SOURCE_NON_COMPLETED);
+
+            case NON_UPDATED_WORKER:
+                return $this->dataBaseShell
+                    ->getSources(self::SOURCES_LIMIT, self::SOURCE_NON_UPDATED);
 
             default:
                 throw new Exception('Unknown worker');

@@ -51,9 +51,10 @@ class GoogleModel implements ModelInterface
      */
     public function writeData($data)
     {
-       if($this->handled === self::SOURCE_NEW && $this->config_status === self::CONFIG_NOT_EMPTY){
+
+       if($this->isNewOrNonCompleted() && $this->config_status === self::CONFIG_NOT_EMPTY){
            $this->writeNewData($data);
-       }elseif($this->handled === self::SOURCE_HANDLED && $this->config_status === self::CONFIG_NOT_EMPTY){
+       }elseif($this->isHandleOrNonUpdated() && $this->config_status === self::CONFIG_NOT_EMPTY){
            $this->writeHandledData($data);
        }
        $this->setNotifications($data);
@@ -147,15 +148,24 @@ class GoogleModel implements ModelInterface
      */
     private function writeHandledData(array $data):void
     {
-        if(!empty($data['reviews'])){
-            $this->reviewCount += count($data['reviews']);
-            $this->insertReviews($data['reviews']);
-            $this->updateConfig($data['config']);
-        }else{
-            $columns = ['source_meta_info'=>json_encode($data['meta'])];
-            $this->dataBase->updateSourceReview($this->source_hash,$columns);
-            $this->queueController->updateTaskQueue($this->source_hash);
+        try {
+            if(!empty($data['reviews'])){
+                $this->reviewCount += count($data['reviews']);
+                $this->insertReviews($data['reviews']);
+                $this->updateConfig($data['config']);
+            }else{
+                $columns = ['source_meta_info'=>json_encode($data['meta'])];
+                $this->dataBase->updateSourceReview($this->source_hash,$columns);
+                $this->queueController->updateTaskQueue($this->source_hash);
+            }
+        }catch (\PDOException $e){
+            $handled = $this->handled === self::SOURCE_NON_UPDATED ?
+                self::SOURCE_UNPROCESSABLE :
+                self::SOURCE_NON_UPDATED;
+            LoggerManager::log(LoggerManager::ERROR,'Ошибка в HANDLED|GoogleModel',['handled'=>$handled]);
+            $this->dataBase->rollback($this->source_hash,$handled);
         }
+
     }
 
     /**
@@ -165,21 +175,35 @@ class GoogleModel implements ModelInterface
      */
     private function writeNewData(array $data):void
     {
-        if(!empty($data['reviews'])){
-            $this->tempReviews = $data['reviews'];//????
-            $this->reviewCount += count($data['reviews']);
-            $this->insertReviews($data['reviews']);
-            $this->updateConfig($data['config']);
+        try {
+            if(!empty($data['reviews'])){
+                $this->tempReviews = $data['reviews'];//????
+                $this->reviewCount += count($data['reviews']);
+                $this->insertReviews($data['reviews']);
+                $this->updateConfig($data['config']);
 
-        }else{
+            }else{
 
-            $columns = [ 'source_meta_info' => json_encode($data['meta']),
-                         'handled'=> self::SOURCE_HANDLED];
-            $this->dataBase->updateSourceReview($this->source_hash,$columns);
-            $this->queueController->insertTaskQueue($this->source_hash,
-                                                    $this->reviewCount,
-                                                    $this->tempReviews[count($this->tempReviews)-1]['date']);
+                $columns = [ 'source_meta_info' => json_encode($data['meta']),
+                             'handled'=> self::SOURCE_HANDLED];
+
+                $this->dataBase->updateSourceReview($this->source_hash,$columns);
+
+                $this->queueController
+                ->insertTaskQueue(
+                    $this->source_hash,
+                    $this->reviewCount,
+                    $this->tempReviews[count($this->tempReviews)-1]['date']
+                );
+            }
+        }catch (\PDOException $e){
+            $handled = $this->handled === self::SOURCE_NON_COMPLETED ?
+                                          self::SOURCE_UNPROCESSABLE :
+                                          self::SOURCE_NON_COMPLETED;
+            LoggerManager::log(LoggerManager::ERROR,'Ошибка в NEW|GoogleModel',['handled'=>$handled]);
+            $this->dataBase->rollback($this->source_hash,$handled);
         }
+
     }
 
     /**
@@ -235,6 +259,24 @@ class GoogleModel implements ModelInterface
     {
         $config = json_encode($config);
         $this->dataBase->updateSourceReview($this->source_hash,['source_config'=>$config]);
+    }
+
+    /**
+     * @return bool
+     * Метод нужен для сокращения кода в методе GetNextRecords
+     */
+    private function isHandleOrNonUpdated():bool
+    {
+        return ($this->handled === self::SOURCE_HANDLED) || ($this->handled === self::SOURCE_NON_UPDATED);
+    }
+
+    /**
+     * @return bool
+     * Метод нужен для сокращения кода в методе GetNextRecords
+     */
+    private function isNewOrNonCompleted():bool
+    {
+        return ($this->handled === self::SOURCE_NEW) || ($this->handled === self::SOURCE_NON_COMPLETED);
     }
 
 }

@@ -42,6 +42,7 @@ class TopDealersGetter implements GetterInterface
     {
         $this->half_Year_Ago = time() - self::HALF_YEAR_TIMESTAMP;
         $this->database = $database;
+
     }
 
     /**
@@ -51,23 +52,21 @@ class TopDealersGetter implements GetterInterface
     public function getNextRecords()
     {
         $this->iterator++;
+
         $this->checkIteration();
         $this->MainPage = $this->getContent($this->source);
 
         if($this->MainPage !== self::BAD_CONNECTION){
             $this->HTML_to_DOM($this->MainPage);
         }else{
-            $this->mainData = self::END_CODE;
-
-            LoggerManager::log(LoggerManager::ERROR,
-                                    'Can not connect to site|TopdealersGetter',
-                                            ['source'=>$this->source]);
-            $this->database->updateSourceReview($this->hash, ['handled'=>'UNPROCESSABLE']);
+            $this->handleCrashLink();
         }
 
-        if($this->handled == self::SOURCE_NEW && $this->mainData !== self::END_CODE){
+        if($this->isNewOrNonCompleted() && $this->mainData !== self::END_CODE){
+
             $this->formMainData($this->half_Year_Ago);
-        }elseif ($this->handled == self::SOURCE_HANDLED && $this->mainData !== self::END_CODE){
+
+        }elseif ($this->isHandleOrNonUpdated() && $this->mainData !== self::END_CODE){
             $this->parseConfig();
             $this->formMainData($this->last_date_review_db);
         }
@@ -88,6 +87,21 @@ class TopDealersGetter implements GetterInterface
         $this->config  = json_decode($config['config'],true);
         $this->hash = $config['source_hash'];
 
+    }
+
+    /**
+     * Действия для сломанной ссылки
+     */
+    private function handleCrashLink():void
+    {
+        $this->mainData = self::END_CODE;
+        $handled = self::SOURCE_UNPROCESSABLE;
+        if($this->handled === self::SOURCE_NEW){
+            $handled = self::SOURCE_NON_COMPLETED;
+        }elseif ($this->handled === self::SOURCE_HANDLED){
+            $handled = self::SOURCE_NON_UPDATED;
+        }
+        $this->database->updateSourceReview($this->hash, ['handled'=>$handled]);
     }
 
     /**
@@ -121,6 +135,9 @@ class TopDealersGetter implements GetterInterface
         if($this->checkURL($url)){
             return Request::get($url)->body;
         }else{
+            LoggerManager::log(LoggerManager::ERROR,
+                'Can not connect to site|TopdealersGetter',
+                        ['source'=>$url]);
             return self::BAD_CONNECTION;
         }
     }
@@ -185,26 +202,34 @@ class TopDealersGetter implements GetterInterface
     /**
      * С помощью phpQuery парсим отзывы.
      * В случае,если отзыв неполный,то применяется доп.метод,который подбирает новый отзыв
+     * Селекторы которые используются :
+     * 1.'div[id^="resp"] .info' - карточка отзывов
+     * 2.'.comment-type' - тональность отзыва
+     * 3.'.title'-заголовок отзыва
+     * 4.'.name'-имя юзера
+     * 5.'.date-list dd'-дата отзыва
+     * 6.'p[class="read_all"]'-селектор для обзаца "читать далее"
+     * 7.'p[class="read_all"] a' - ссылка на полный отзыв
      */
     private function parseReviews():void
     {
-        $responses=$this->ResponsesPage->find('div[id^="resp"] .info');                         //находим карточку товара
+        $responses=$this->ResponsesPage->find('div[id^="resp"] .info');
 
-        foreach ($responses as $v){                                                             //разбираем эту карточку
+        foreach ($responses as $v){
 
-            $responseFullInfo['tonal'] = trim(pq($v)->find('.comment-type')->text());  //тональность оценки
-            $responseFullInfo['title'] = pq($v)->find('.title')->text();               //заголовок отзыва
-            $responseFullInfo['identifier'] = pq($v)->find('.name')->text();           //имя юзера
+            $responseFullInfo['tonal'] = trim(pq($v)->find('.comment-type')->text());
+            $responseFullInfo['title'] = pq($v)->find('.title')->text();
+            $responseFullInfo['identifier'] = pq($v)->find('.name')->text();
 
             $iterator = 1;
 
-            foreach (pq($v)->find('.date-list dd') as $value){                         //дата отзыва
+            foreach (pq($v)->find('.date-list dd') as $value){
                 if($iterator%2 == 0){
                     $responseFullInfo['date']=strtotime(pq($value)->text());
                 }
                 $iterator++;
             }
-            if(pq($v)->find('p[class="read_all"]')->text()){//если ответ не полный,то редирект на страницу полного отзыва
+            if(pq($v)->find('p[class="read_all"]')->text()){
 
                 $fullReviewUrl = self::MAIN_URL . pq($v)->find('p[class="read_all"] a')->attr('href');
                 $responseFullInfo["text"]=$this->getFullReview($fullReviewUrl);
@@ -249,9 +274,7 @@ class TopDealersGetter implements GetterInterface
                 $this->mainData['reviews'] = $data;
                 break;
             }
-
         }
-
     }
 
     /**
@@ -280,13 +303,32 @@ class TopDealersGetter implements GetterInterface
      */
     private function checkURL(string $url):bool
     {
-    $response = get_headers($url);
+        $response = get_headers($url);
 
-    if($response[0] === 'HTTP/1.1 200 OK'){
-        return true;
-    }else{
-        return false;
+        if($response[0] === 'HTTP/1.1 200 OK'){
+            return true;
+        }else{
+            return false;
+        }
     }
 
-}
+    /**
+     * @return bool
+     * Метод нужен для сокращения кода в методе GetNextRecords
+     */
+    private function isHandleOrNonUpdated():bool
+    {
+        return ($this->handled === self::SOURCE_HANDLED) || ($this->handled === self::SOURCE_NON_UPDATED);
+    }
+
+    /**
+     * @return bool
+     * Метод нужен для сокращения кода в методе GetNextRecords
+     */
+    private function isNewOrNonCompleted():bool
+    {
+        return ($this->handled === self::SOURCE_NEW) || ($this->handled === self::SOURCE_NON_COMPLETED);
+    }
+
+
 }

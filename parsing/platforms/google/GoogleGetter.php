@@ -27,11 +27,11 @@ class GoogleGetter  implements GetterInterface
     private $dataBase;
 
     protected $source;
-    protected $handle;
+    protected $handled;
 
     private $trigger = self::CONTINUE;
     private $halfYearAgo;
-    private $iterator = 0;
+    private $iteration = 0;
 
     private $mainData;
 
@@ -77,33 +77,24 @@ class GoogleGetter  implements GetterInterface
      */
     public function getNextRecords()
     {
-        $this->iterator++;
+        $this->preparingFirstActions();
 
-        if ($this->trigger === self::END_CODE) {
-               $this->mainData = self::END_CODE;
-        }elseif($this->trigger === self::LAST_ITERATION){
-            $this->mainData['platform_info']['reviews'] = [];
-            $this->trigger = self::END_CODE;
-        }else{
-                $this->refreshToken();
-                $this->connectToPlatform();
-                $this->checkResponse();
-        }
+        if($this->mayProcessNewOrNonCompleted()){
+            $this->formMainData($this->halfYearAgo);
 
-        if($this->handle === self::SOURCE_NEW && $this->trigger === self::CONTINUE){
-            $this->formData($this->halfYearAgo);
+        }elseif($this->mayProcessHandledOrNonUpdated()){
 
-        }elseif($this->handle == self::SOURCE_HANDLED && $this->trigger === self::CONTINUE){
             $lastReviewFromSource = $this->arrayReviewToMd5Hash();
+            $lastReviewHash = $this->mainData['config']['last_review_hash'];
 
-            if($lastReviewFromSource === $this->mainData['config']['last_review_hash']){
+            if($lastReviewFromSource === $lastReviewHash){
                 $this->mainData['platform_info']['reviews'] = [];
                 $this->trigger = self::END_CODE;
             }else{
-                $this->formData($this->last_review_db);
+                $this->formMainData($this->last_review_db);
             }
         }
-
+        $this->checkMainData();
         return $this->mainData;
     }
 
@@ -111,13 +102,31 @@ class GoogleGetter  implements GetterInterface
      * @param int $timeToCut
      * Метод устанавливает конфиги,обрезает отзывы и вызывает метод,проверяющий обрезанные данные
      */
-    private function formData(int $timeToCut):void
+    private function formMainData(int $timeToCut):void
     {
-        if($this->iterator === 1){
+        if($this->iteration === 1){
             $this->setLastReviewConfig();
         }
         $this->cutToTime($timeToCut);
-        $this->checkMainData();
+    }
+
+    /**
+     * Метод производит действия,независящие от флага handled
+     */
+    private function preparingFirstActions():void
+    {
+        $this->iteration++;
+
+        if ($this->trigger === self::END_CODE) {
+            $this->mainData = self::END_CODE;
+        }elseif($this->trigger === self::LAST_ITERATION){
+            $this->mainData['platform_info']['reviews'] = [];
+            $this->trigger = self::END_CODE;
+        }else{
+            $this->refreshToken();
+            $this->connectToPlatform();
+            $this->checkResponse();
+        }
     }
     /**
      * Метод проверяет ответ от GMB_API.
@@ -152,11 +161,11 @@ class GoogleGetter  implements GetterInterface
         if($this->validateConfig($config)){
             $decode_config = json_decode($config['config'],true);
             $this->source = $config['source'];
-            $this->handle = $config['handled'];
+            $this->handled = $config['handled'];
             $this->mainData['config'] = $decode_config;
 
 
-            if($this->handle === self::SOURCE_HANDLED){
+            if($this->handled === self::SOURCE_HANDLED){
                 $this->last_review_db = $decode_config['last_review_date'];
             }
         }else{
@@ -194,7 +203,8 @@ class GoogleGetter  implements GetterInterface
         $this->client->setAccessToken($this->mainData['config']['token_info']);
         if($this->client->isAccessTokenExpired()){
             $refreshToken = $this->client->getRefreshToken();
-            $this->mainData['config']['token_info'] = $this->client->fetchAccessTokenWithRefreshToken($refreshToken);
+            $this->mainData['config']['token_info'] = $this->client
+                                                      ->fetchAccessTokenWithRefreshToken($refreshToken);
         }
     }
 
@@ -207,9 +217,8 @@ class GoogleGetter  implements GetterInterface
     {
         $configIsValid = true;
         $handledNotExist = !array_key_exists('handled', $config);
-        $trackNotExist = !array_key_exists('track', $config);//??????????????? maybeDeleted
         $sourceConfigNotExist = !array_key_exists('config',$config);
-        if($handledNotExist || $trackNotExist || $sourceConfigNotExist){
+        if($handledNotExist || $sourceConfigNotExist){
             $configIsValid = false;
         }
         return $configIsValid;
@@ -280,6 +289,24 @@ class GoogleGetter  implements GetterInterface
             }
             $implode_array = implode($lastUpdateReview,'');
             return md5($implode_array);
+    }
+
+    /**
+     * @return bool
+     * Метод нужен для сокращения кода в методе GetNextRecords
+     */
+    private function mayProcessHandledOrNonUpdated():bool
+    {
+        return ($this->handled === self::SOURCE_HANDLED) || ($this->handled === self::SOURCE_NON_UPDATED) && $this->trigger === self::CONTINUE;
+    }
+
+    /**
+     * @return bool
+     * Метод нужен для сокращения кода в методе GetNextRecords
+     */
+    private function mayProcessNewOrNonCompleted():bool
+    {
+        return ($this->handled === self::SOURCE_NEW) || ($this->handled === self::SOURCE_NON_COMPLETED) && $this->trigger === self::CONTINUE;
     }
 
 }

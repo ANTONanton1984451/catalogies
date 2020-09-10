@@ -8,6 +8,7 @@ use parsing\ParserManager;
 use parsing\logger\LoggerManager;
 use Workerman\Worker;
 use Workerman\Timer;
+use parsing\DB\DatabaseShell;
 
 ini_set('error_reporting', E_ALL);
 ini_set('display_errors', 1);
@@ -36,7 +37,7 @@ function loopGo() {
     $highPriorityWorker->onWorkerStart = function ($highPriorityWorker) {
         $timeInterval = 20;
         $timerId = Timer::add($timeInterval, function () {
-            (new ParserManager(HIGH_PRIORITY_WORKER))->parseSources();
+            (new ParserManager(HIGH_PRIORITY_WORKER,new DatabaseShell()))->parseSources();
         });
     };
 
@@ -48,6 +49,28 @@ function loopGo() {
         $timeInterval = 20;
         $timerId = Timer::add($timeInterval, function () {
             (new ParserManager(LOW_PRIORITY_WORKER))->parseSources();
+        });
+    };
+
+    $lowPriorityWorker = new Worker();
+    $lowPriorityWorker->name = "LOW PRIORITY sources worker";
+    $lowPriorityWorker->count = 1;
+
+    $lowPriorityWorker->onWorkerStart = function ($lowPriorityWorker) {
+        $timeInterval = 2000;
+        $timerId = Timer::add($timeInterval, function () {
+            (new ParserManager(NON_COMPLETED_WORKER))->parseSources();
+        });
+    };
+
+    $lowPriorityWorker = new Worker();
+    $lowPriorityWorker->name = "LOW PRIORITY sources worker";
+    $lowPriorityWorker->count = 1;
+
+    $lowPriorityWorker->onWorkerStart = function ($lowPriorityWorker) {
+        $timeInterval = 2000;
+        $timerId = Timer::add($timeInterval, function () {
+            (new ParserManager(NON_UPDATED_WORKER))->parseSources();
         });
     };
 

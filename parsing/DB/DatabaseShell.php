@@ -7,9 +7,10 @@
 namespace parsing\DB;
 
 use Medoo\Medoo;
+use parsing\factories\factory_interfaces\ConstantInterfaces;
 use PDO;
 
-class DatabaseShell
+class DatabaseShell implements ConstantInterfaces
 {
     private $database;
 
@@ -26,16 +27,18 @@ class DatabaseShell
      *
      * @return array
      */
-    public function getSources(int $limit , string $handled_flag , array $platforms = []) : array {
-        if($handled_flag === 'NEW'){
-            $sources = $this->getNewSources($limit);
-
-        }elseif ($handled_flag === 'HANDLED'){
-            $sources = $this->getActualSources($limit,$platforms);
+    public function getSources(int $limit , string $handled_flag , array $platforms = []) : array
+    {
+        switch ($handled_flag){
+            case self::SOURCE_NEW:
+            case self::SOURCE_NON_COMPLETED:
+            case self::SOURCE_NON_UPDATED:
+                $sources = $this->getNonHandledSources($limit,$handled_flag);
+                break;
+            case self::SOURCE_HANDLED:
+                $sources = $this->getHandledSources($limit,$platforms);
+                break;
         }
-
-        // todo: Рефактор данной функции, чтобы она отдавала еще ссылки "WITH_ERROR"
-
         return $sources;
     }
 
@@ -49,7 +52,7 @@ class DatabaseShell
      * @param array $platforms
      * @return array
      */
-    public function getActualSources(int $limit, array $platforms): array
+    public function getHandledSources(int $limit, array $platforms): array
     {
         $platformsSql = implode(",", $platforms);
         $dates = $this->calcPriorityDates();
@@ -81,9 +84,10 @@ class DatabaseShell
      * Возвращает ссылки с флагом handled для New Worker'a
      *
      * @param int $limit
+     * @param string $handled_flag
      * @return array
      */
-    public function getNewSources(int $limit) : array
+    public function getNonHandledSources(int $limit,string $handled_flag) : array
     {
         return $this->database->select('source_review', [
             'source_hash',
@@ -94,11 +98,11 @@ class DatabaseShell
             'source_config(config)'
         ],
         [
-            'handled' => 'NEW',
-            'actual' =>'ACTIVE',
+            'handled' => $handled_flag,
+            'actual' =>self::SOURCE_ACTUAL,
             "LIMIT" => $limit
         ]);
-}
+    }
 
     // Work with Review
     public function insertReviews(array $reviews, array $constInfo = []):int
@@ -106,6 +110,7 @@ class DatabaseShell
         foreach ($reviews as &$review) {
             $review = array_merge($review,$constInfo);
         }
+
        return $this->database->insert("review", $reviews)->rowCount();
     }
 
@@ -125,13 +130,14 @@ class DatabaseShell
      * Функция производит откат отзывов по какой либо ссылке,
      * если не имеется возможности гарантировать целостность данных
      *
-     * @param $source_hash_key
-     * @return int
+     * @param string $source_hash_key
+     * @param string $status
+     * @return void
      */
-    public function rollback($source_hash_key) : int
+    public function rollback(string $source_hash_key,string $status):void
     {
-        $pdoStatement = $this->database->delete("review", ['source_hash_key' => $source_hash_key]);
-        return $pdoStatement->rowCount();
+        $this->database->delete("review", ['source_hash_key' => $source_hash_key]);
+        $this->updateSourceReview($source_hash_key,['handled'=>$status]);
     }
 
 

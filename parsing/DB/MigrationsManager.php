@@ -170,6 +170,7 @@ class MigrationsManager
 
 
     public function seedDatabase() {
+        $this->seedGoogle();
         $platforms = [
 //            'flamp',
             'topdealers',
@@ -208,35 +209,39 @@ class MigrationsManager
             'https://volgograd.zoon.ru/beauty/kosmetologicheskaya_klinika_soprano/',
         ];
 
-        foreach ($platforms as $platform) {
+//        foreach ($platforms as $platform) {
+//
+//
+//            $sources = $platform . "_links";
+//            foreach ($$sources as $source) {
+//                $db = new DatabaseShell();
+//                $db->insertSourceReview([
+//                    'source_hash' => md5($source),
+//                    'platform' => $platform,
+//                    'source' => $source,
+//                    'actual' => 'ACTIVE',
+//                    'track' => 'ALL',
+//                    'handled' => 'NEW'
+//                ]);
+//            }
+//        }
+
+    }
 
 
-            $sources = $platform . "_links";
-            foreach ($$sources as $source) {
-                $db = new DatabaseShell();
-                $db->insertSourceReview([
-                    'source_hash' => md5($source),
-                    'platform' => $platform,
-                    'source' => $source,
-                    'actual' => 'ACTIVE',
-                    'track' => 'ALL',
-                    'handled' => 'NEW'
-                ]);
-            }
-        }
-
-
+    private function seedGoogle()
+    {
         $google_links = [
             [
                 'source'=>'accounts/101148201288830043360/locations/5839617167530752762',
                 'config'=>[
                     'token_info'=>[
-                          'access_token' =>  'ya29.a0AfH6SMClm14SrVXboygJiAhw9IckyEg5pYsCE64YMLsq30RbxQSoJtUcTHtI9GsiTQD6rCAWjwoXQdJ1E-vZ8GNAi5IhVXCHGQn14xQpcFhYbeeribO4GZVctAp9p7YwZEZugc1zftYmUB9gzGAojDIwKJspZbFZquc',
-                          'expires_in' =>  3599,
-                          'refresh_token' => '1//0civO_apGzWFeCgYIARAAGAwSNwF-L9Ir01TiziSGGG33fFDsSFaPwffgvsjwetQhqAYpwjmKMjJs-RPuxOR9UwP9PU61nfZmDvc',
-                          'scope' =>  'https://www.googleapis.com/auth/business.manage',
-                          'token_type' => 'Bearer',
-                          'created' => 1598615609
+                        'access_token' =>  'ya29.a0AfH6SMClm14SrVXboygJiAhw9IckyEg5pYsCE64YMLsq30RbxQSoJtUcTHtI9GsiTQD6rCAWjwoXQdJ1E-vZ8GNAi5IhVXCHGQn14xQpcFhYbeeribO4GZVctAp9p7YwZEZugc1zftYmUB9gzGAojDIwKJspZbFZquc',
+                        'expires_in' =>  3599,
+                        'refresh_token' => '1//0civO_apGzWFeCgYIARAAGAwSNwF-L9Ir01TiziSGGG33fFDsSFaPwffgvsjwetQhqAYpwjmKMjJs-RPuxOR9UwP9PU61nfZmDvc',
+                        'scope' =>  'https://www.googleapis.com/auth/business.manage',
+                        'token_type' => 'Bearer',
+                        'created' => 1598615609
                     ]
                 ]
             ],
@@ -255,21 +260,19 @@ class MigrationsManager
             ]
         ];
 
-//        foreach ($google_links as $source){
-//            $db = new DatabaseShell();
-//            $db->insertSourceReview([
-//                'source_hash' => md5($source['source']),
-//                'platform' => 'google',
-//                'source' => $source['source'],
-//                'actual' => 'ACTIVE',
-//                'track' => 'ALL',
-//                'handled' => 'NEW',
-//                'source_config'=>json_encode($source['config'])
-//            ]);
-//        }
+        foreach ($google_links as $source){
+            $db = new DatabaseShell();
+            $db->insertSourceReview([
+                'source_hash' => md5($source['source']),
+                'platform' => 'google',
+                'source' => $source['source'],
+                'actual' => 'ACTIVE',
+                'track' => 'ALL',
+                'handled' => 'NEW',
+                'source_config'=>json_encode($source['config'])
+            ]);
+        }
     }
-
-
 
     private function getConnection():Medoo
     {
