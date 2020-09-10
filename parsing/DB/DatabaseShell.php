@@ -166,10 +166,12 @@ class DatabaseShell
             'database_type' => 'mysql',
             'database_name' => DATABASE,
             'server' => 'localhost',
+            'logging' => true,
             'username' => DB_USER,
             'password' => DB_PASSWORD,
             'option' => [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_ORACLE_NULLS => PDO::NULL_NATURAL,
             ]
         ]);
     }

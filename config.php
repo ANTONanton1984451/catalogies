@@ -13,6 +13,8 @@ define ("HIGH_PRIORITY_PLATFORMS", [
     "'zoon'"
 ]);
 
+define ("MEDIUM_PRIORITY_PLATFORMS", ["'flamp'"]);
+
 define ("LOW_PRIORITY_PLATFORMS", [
     "'topdealers'",
     "'yell'"

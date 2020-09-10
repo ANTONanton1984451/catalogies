@@ -2,14 +2,11 @@
 
 // todo: Продумать варианты проверки, и запасные варианты, на случай изменений на сайте, в API и т.д.
 
-// todo: ZOON, FLAMP, YELL -> если создавать документ для проверки даты последнего отзыва,
-//          можно существенно ускорить время работы парсера при новых ссылках
-
 namespace parsing\platforms\zoon;
 
-use parsing\DB\DatabaseShell;
 use parsing\factories\factory_interfaces\GetterInterface;
 use parsing\logger\LoggerManager;
+use parsing\DB\DatabaseShell;
 use Unirest\Request;
 use stdClass;
 use phpQuery;
@@ -31,9 +28,10 @@ class ZoonGetter implements GetterInterface {
     private $queue;
 
     private $isEnd = false;
-    private $activePage = 0;
+    private $activePage = self::FIRST_PAGE;
 
-    public function setConfig($config) {
+    public function setConfig($config) : void {
+
         if ($this->validateConfig($config) === true) {
             $this->sourceStatus = $config['handled'];
             $this->metaRecord = $this->generateMetaRecord($config["source"], $config["source_hash"]);
@@ -57,9 +55,9 @@ class ZoonGetter implements GetterInterface {
 
      * @param $source string
      * @param $sourceHash string
-     * @return mixed
+     * @return object
      */
-    private function generateMetaRecord (string $source, string $sourceHash) {
+    private function generateMetaRecord (string $source, string $sourceHash) : object {
         $response = Request::get($source);
         $document = phpQuery::newDocument($response->body);
 
@@ -119,22 +117,26 @@ class ZoonGetter implements GetterInterface {
      * @return object|int
      */
     private function parseNewSource () {
-        if ($this->isEnd != true) {
-            $records = $this->getReviews($this->activePage);
+        if ($this->isReadyQueue === false) {
+            $firstReviews = $this->getReviews($this->activePage++);
 
-            if ($this->activePage === self::FIRST_PAGE) {
-                $this->saveFirstPage($records->list);
-            }
+            $this->saveFirstPage($firstReviews);
+            $this->queue [] = $firstReviews;
 
-            $this->activePage++;
+            $this->queue [] = $this->getMetaRecord();
+            $this->queue [] = $this->getEndCode();
 
-            if ($records->list === "") {
-                $records = $this->getMetaRecord();
-                $this->isEnd = true;
-            }
-        } else {
-            $records = $this->getEndCode();
+            $this->isReadyQueue = true;
         }
+
+        $records = array_shift($this->queue);
+
+        $reviews = $this->getReviews($this->activePage++);
+
+        if ($this->isEmptyRecord($reviews) === false) {
+            array_push($this->queue, $this->getReviews($this->activePage++));
+        }
+
         return $records;
     }
 
@@ -160,7 +162,7 @@ class ZoonGetter implements GetterInterface {
 
             $this->isReadyQueue = true;
         }
-        return array_shift($this->queue);
+        return array_pop($this->queue);
     }
 
     private function validateConfig (array $config) : bool {
@@ -177,7 +179,7 @@ class ZoonGetter implements GetterInterface {
         return true;
     }
 
-    private function getReviews(int $page) : object{
+    private function getReviews(int $page) : object {
         $this->addQueryParameters['skip'] = $page * self::REVIEWS_LIMIT;
         $addQuery = http_build_query($this->addQueryParameters);
 
@@ -201,5 +203,9 @@ class ZoonGetter implements GetterInterface {
 
     private function saveFirstPage($records) {
         $this->metaRecord->hash = md5($records);
+    }
+
+    private function isEmptyRecord(object $reviews) {
+        return $reviews->body === "";
     }
 }

@@ -1,26 +1,27 @@
 <?php
-// todo: Переписать getReviews
-
-// todo: После срабатывания isOverHalfYear нужно сначала доставить отзывы, а потом еще одна итерация
-
 // todo: Посмотреть библиотеки, которые автоматически создают реалистичные headers, для запросов
 
 namespace parsing\platforms\flamp;
 
-use parsing\DB\DatabaseShell;
 use parsing\factories\factory_interfaces\GetterInterface;
 use parsing\logger\LoggerManager;
+use parsing\DB\DatabaseShell;
 use Unirest\Request;
 use stdClass;
 use phpQuery;
 
-class FlampGetter implements GetterInterface
-{
+class FlampGetter implements GetterInterface {
+
+    const LIMIT_REVIEWS = 50;
+
+    const FIRST_PAGE = true;
+    const OTHER_PAGE = false;
+
     const API_URL_PREFIX = 'https://flamp.ru/api/2.0/filials/';
     const API_URL_POSTFIX = '/reviews?limit=' . self::LIMIT_REVIEWS;
 
     const HEADERS = [
-        "Accept" => ";q=1;depth=1;scopes={\"user\":{\"fields\":\"id,name,url,image,reviews_count,sex\"},\"official_answer\":{}};application/json",
+        "Accept" => "q=1;depth=1;scopes={\"user\":{\"fields\":\"name,url,sex\"},\"official_answer\":{}};",
         "Accept-Encoding" => "gzip, deflate, br",
         "Accept-Language" => "ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3",
         "Authorization" => "Bearer 2b93f266f6a4df2bb7a196bb76dca60181ea3b37",
@@ -32,21 +33,15 @@ class FlampGetter implements GetterInterface
         "X-Application" => "Flamp4"
     ];
 
-    private $status;
+    private $sourceStatus;
     private $metaRecord;
     private $oldHash;
 
     private $organizationId;
-    private $nextLink = 0;
-    private $halfYearAgo;
+    private $nextLink;
 
-    private $isEnd = false;
-    private $isReviewsSended = false;
-
-    const LIMIT_REVIEWS = 50;
-
-    const FIRST_RECORDS = true;
-    const OTHER_RECORDS = false;
+    private $isReadyQueue = false;
+    private $queue;
 
     /**
      * Данная функция выполняется после инициализации объекта, и задает значения для полей, а также
@@ -54,15 +49,22 @@ class FlampGetter implements GetterInterface
      *
      * @param $config
      */
-    public function setConfig($config) {
-        if ($this->validateConfig($config)) {
-            $this->status = $config['handled'];
-            $this->metaRecord = $this->generateMetaRecord($config['source'], $config['source_hash']);
-            $this->halfYearAgo = time() - self::HALF_YEAR_TIMESTAMP;
+    public function setConfig($config) : void {
 
-            if ($this->status === self::SOURCE_HANDLED) {
+        if ($this->validateConfig($config)) {
+            $this->sourceStatus = $config['handled'];
+            $this->metaRecord = $this->generateMetaRecord($config['source'], $config['source_hash']);
+
+            if ($this->sourceStatus === self::SOURCE_HANDLED) {
                 $this->oldHash = json_decode($config["config"], true)['old_hash'];
             }
+        } else {
+            $this->sourceStatus = self::SOURCE_UNPROCESSABLE;
+            (new DatabaseShell())->updateSourceReview($config['source_hash'], ['handled' => 'UNPROCESSABLE']);
+
+            $message = "Недостаточно данных для обработки ссылки";
+            LoggerManager::log(LoggerManager::DEBUG, $message, [$config]);
+
         }
     }
 
@@ -76,7 +78,7 @@ class FlampGetter implements GetterInterface
             $message = "Не удалось получить токен заведения";
             LoggerManager::log(LoggerManager::DEBUG, $message, [$source]);
 
-            $this->status = self::SOURCE_UNPROCESSABLE;
+            $this->sourceStatus = self::SOURCE_UNPROCESSABLE;
             (new DatabaseShell())->updateSourceReview($source_hash, ['handled' => 'UNPROCESSABLE']);
         }
 
@@ -92,7 +94,7 @@ class FlampGetter implements GetterInterface
     }
 
     public function getNextRecords() {
-        switch ($this->status) {
+        switch ($this->sourceStatus) {
             case self::SOURCE_NEW:
                 $records = $this->parseNewSource();
                 break;
@@ -110,78 +112,66 @@ class FlampGetter implements GetterInterface
     }
 
     private function parseNewSource() {
-        if ($this->isEnd != true) {
-            if ($this->nextLink === 0) {
-                $records = $this->getReviews(self::FIRST_RECORDS);
-            } else {
-                $records = $this->getReviews(self::OTHER_RECORDS);
+
+        if ($this->isReadyQueue === false) {
+            $firstReviews = $this->getReviews(self::FIRST_PAGE);
+
+            $this->saveFirstPage($firstReviews);
+            $this->queue [] = $firstReviews;
+
+            $this->queue [] = $this->getMetaRecord();
+            $this->queue [] = $this->getEndCode();
+
+            $this->isReadyQueue = true;
+        }
+
+        $records = array_shift($this->queue);
+
+        if (is_object($records) && $records->type === self::TYPE_REVIEWS) {
+            if (isset($records->body->next_link)) {
+                $this->nextLink = $records->body->next_link;
             }
 
-            if ($this->isReviewsSended == true) {
-                $records = $this->getMetaRecord();
-                $this->isEnd = true;
+            if ($this->isOverHalfYear($records) === false) {
+                array_push($this->queue, $this->getReviews(self::OTHER_PAGE));
             }
-
-            if ($records->type === self::TYPE_REVIEWS) {
-                if ($this->isOverHalfYear($records)) {
-                    $this->isReviewsSended = true;
-                }
-            }
-
-        } else {
-            $records = $this->getEndCode();
         }
 
         return $records;
     }
 
     private function parseHandledSource() {
-        if ($this->isEnd != true) {
-            $records = $this->getReviews(true);
 
-            if ($this->isEqualsHash(md5(json_encode($records))) || $this->isReviewsSended == true) {
-                $records = $this->getMetaRecord();
-                $this->isEnd = true;
+        if ($this->isReadyQueue === false) {
+            $records = $this->getReviews(self::FIRST_PAGE);
 
-            } else {
-                $this->isReviewsSended = true;
+            if ($this->isEqualsHash($records) === false) {
+                $this->queue [] = $records;
+                $this->saveFirstPage($records);
             }
 
-        } else {
-            $records = $this->getEndCode();
+            $this->queue [] = $this->getMetaRecord();
+            $this->queue [] = $this->getEndCode();
+
+            $this->isReadyQueue = true;
         }
 
-        return $records;
+        return array_shift($this->queue);
     }
 
     private function getReviews(bool $isFirst = false) : object {
-        if ($isFirst === true) {
-            $apiURL = self::API_URL_PREFIX . $this->organizationId . self::API_URL_POSTFIX;
-            $response = Request::get($apiURL, self::HEADERS);
-            $this->saveFirstPage($response->body);
-
-        } else {
-            $response = Request::get($this->nextLink, self::HEADERS);
-        }
-
-        $records = $response->body;
+        $records = new stdClass();
         $records->type = self::TYPE_REVIEWS;
 
-        if (isset($response->body->next_link)) {
-            $this->nextLink = $response->body->next_link;
+        if ($isFirst === true) {
+            $apiURL = self::API_URL_PREFIX . $this->organizationId . self::API_URL_POSTFIX;
+            $records->body = Request::get($apiURL, self::HEADERS)->body;
+
         } else {
-            $this->isReviewsSended = true;
+            $records->body = Request::get($this->nextLink, self::HEADERS)->body;
         }
 
         return $records;
-    }
-
-    private function getMetaRecord() {
-        return $this->metaRecord;
-    }
-
-    private function getEndCode() {
-        return self::END_CODE;
     }
 
     private function validateConfig($config) {
@@ -192,40 +182,33 @@ class FlampGetter implements GetterInterface
         $trackNotExist = !array_key_exists("track", $config);
 
         if ($incorrectHttpCode || $handledNotExist || $trackNotExist) {
-            $this->status = self::SOURCE_UNPROCESSABLE;
-            (new DatabaseShell())->updateSourceReview($config['source_hash'], ['handled' => 'UNPROCESSABLE']);
-
-            $message = "Недостаточно данных для обработки ссылки";
-            LoggerManager::log(LoggerManager::DEBUG, $message, [$config]);
-
             return false;
         }
 
         return true;
     }
 
-    /**
-     * Функция сравнивает текущий хэш с хэшем, полученным при предыдущей обработке данной ссылки.
+    private function isOverHalfYear(object $records) {
+        $countReviews = count($records->body->reviews);
+        $lastReviewDate = strtotime($records->body->reviews[$countReviews - 1]->date_created);
+        $halfYearAgo = time() - self::HALF_YEAR_TIMESTAMP;
 
-     * @param $hash string
-     * @return bool
-     */
-    private function isEqualsHash(string $hash) {
-        return $this->oldHash === $hash;
+        return $lastReviewDate < $halfYearAgo;
     }
 
-    private function isOverHalfYear(object $records) {
-        $countReviews = count($records->reviews);
-        $lastReviewDate = strtotime($records->reviews[$countReviews - 1]->date_created);
-
-        if ($lastReviewDate < $this->halfYearAgo) {
-            return true;
-        }
-
-        return false;
+    private function isEqualsHash(object $hash) {
+        return $this->oldHash === md5(serialize($hash));
     }
 
     private function saveFirstPage($records) {
-        $this->metaRecord->hash = md5(json_encode($records));
+        $this->metaRecord->hash = md5(serialize($records));
+    }
+
+    private function getMetaRecord() {
+        return $this->metaRecord;
+    }
+
+    private function getEndCode() {
+        return self::END_CODE;
     }
 }

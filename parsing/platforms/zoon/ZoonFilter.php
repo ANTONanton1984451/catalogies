@@ -1,7 +1,5 @@
 <?php
 
-// todo: Проверка на официальный ответ
-
 namespace parsing\platforms\zoon;
 
 use parsing\factories\factory_interfaces\FilterInterface;

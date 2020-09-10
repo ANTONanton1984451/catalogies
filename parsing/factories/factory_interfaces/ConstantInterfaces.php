@@ -8,7 +8,7 @@ interface ConstantInterfaces {
     const SOURCE_HANDLED  = 'HANDLED';
     const SOURCE_NEW = 'NEW';
     const SOURCE_UNPROCESSABLE = 'UNPROCESSABLE';
-    const SOURCE_UNCOMPLETED = 'UNCOMPLETED';
+    const SOURCE_NON_COMPLETED = 'NON_COMPLETED';
     const SOURCE_NON_UPDATED = 'NON_UPDATED';
 
     const HALF_YEAR_TIMESTAMP = 15552000;

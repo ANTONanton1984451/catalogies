@@ -13,7 +13,6 @@ class Parser implements ConstantInterfaces
     const MESSAGE_END = 0;
     const MESSAGE_START = 1;
 
-
     private $status = self::MESSAGE_START;
 
     private $getter;
@@ -35,16 +34,13 @@ class Parser implements ConstantInterfaces
 
         while ($this->status != self::MESSAGE_END) {
             $buffer = $this->getter->getNextRecords();
-            echo 1;
             if ($buffer === self::END_CODE) {
                 $this->status = self::MESSAGE_END;
                 continue;
             }
 
             $buffer = $this->filter->clearData($buffer);
-            echo 2;
             $this->model->writeData($buffer);
-            echo 3;
         }
 
 

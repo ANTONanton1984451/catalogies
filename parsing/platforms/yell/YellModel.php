@@ -9,6 +9,7 @@ use parsing\services\TaskQueueController;
 class YellModel implements ModelInterface {
 
     private $sourceConfig;
+    private $sourceMeta;
     private $sourceTrack;
     private $sourceHash;
     private $sourceStatus;
@@ -29,12 +30,14 @@ class YellModel implements ModelInterface {
     }
 
     public function setConfig($config) : void {
+        
         $this->sourceStatus = $config['handled'];
         $this->sourceTrack = $config['track'];
         $this->sourceHash = $config['source_hash'];
+        
         $this->constInfo['source_hash_key'] = $config['source_hash'];
 
-        if ($this->sourceStatus === "HANDLED") {
+        if ($this->sourceStatus === self::SOURCE_HANDLED) {
             $sourceConfig = json_decode($config['config'], true);
             $this->maxDate = $sourceConfig['max_date'];
         }
@@ -84,7 +87,7 @@ class YellModel implements ModelInterface {
     }
 
     private function writeMetaRecord($records) {
-        $sourceMeta = [
+        $this->sourceMeta = [
             'count_reviews' => $records->count_reviews,
             'count_added_reviews' => $this->countReviews,
             'average_mark' => $records->average_mark,
@@ -108,7 +111,7 @@ class YellModel implements ModelInterface {
         ];
 
         (new DatabaseShell())->updateSourceReview($this->sourceHash, [
-            'source_meta_info' => json_encode($sourceMeta),
+            'source_meta_info' => json_encode($this->sourceMeta),
             'source_config' => json_encode($sourceConfig),
             'handled' => self::SOURCE_HANDLED,
         ]);
@@ -128,10 +131,19 @@ class YellModel implements ModelInterface {
             'track' => $this->sourceTrack,
         ];
 
+        if ($this->sourceStatus === self::SOURCE_NEW) {
+            $source_container = [
+                'type' => self::TYPE_METARECORD,
+                'container' => $this->sourceMeta,
+            ];
+            $this->notify = array_merge($source_container, $sourceConfig);
 
+        } elseif ($this->sourceStatus === self::SOURCE_HANDLED && isset($this->notify['container'])) {
+            $this->notify = array_merge($this->notify, $sourceConfig);
+        }
     }
 
-    public function getNotifications(): array {
-
+    public function getNotifications() : array {
+        return $this->notify;
     }
 }

@@ -161,6 +161,5 @@ class ZoonModel implements ModelInterface {
         } elseif ($this->sourceStatus === self::SOURCE_HANDLED && isset($this->notify['container'])) {
             $this->notify = array_merge($this->notify, $sourceConfig);
         }
-
     }
 }

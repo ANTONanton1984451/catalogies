@@ -1,5 +1,7 @@
 <?php
 // todo: Проверка на успешность записи, если неудача, exception - rollback - logger
+
+// todo: refactor writeMetaRecord
 namespace parsing\platforms\flamp;
 
 use parsing\DB\DatabaseShell;
@@ -7,26 +9,33 @@ use parsing\factories\factory_interfaces\ModelInterface;
 use parsing\services\TaskQueueController;
 
 class FlampModel implements ModelInterface {
-    private $maxDate = PHP_INT_MIN;
+    private $maxDate = 0;
     private $minDate = PHP_INT_MAX;
 
     private $status;
     private $countReviews = 0;
 
-    private $constInfo = ['platform' => 'flamp'];
+    private $constInfo = [
+        'platform' => 'flamp'
+    ];
+
     private $sourceConfig;
+    private $sourceHash;
 
     private $beforeHalfYearTimestamp;
+    private $notifies;
 
     public function setConfig($config) {
         $this->beforeHalfYearTimestamp = time() - self::HALF_YEAR_TIMESTAMP;
 
         $this->status = $config['handled'];
-        $this->constInfo['source_hash_key'] = $config['source_hash'];
+
+        $this->sourceHash = $config['source_hash'];
+        $this->constInfo['source_hash_key'] = $this->sourceHash;
 
         if ($this->status === self::SOURCE_HANDLED) {
             $this->sourceConfig = json_decode($config['config'], true);
-            $this->maxDate = $sourceConfig['max_date'];
+            $this->maxDate = $this->sourceConfig['max_date'];
         }
     }
 
@@ -35,11 +44,9 @@ class FlampModel implements ModelInterface {
             $this->writeReviews($records);
         }
 
-        if (is_object($records)) {
-            if ($records->type === self::TYPE_METARECORD) {
+        if (is_object($records) && $records->type === self::TYPE_METARECORD) {
                 $this->writeMetaRecord($records);
                 $this->writeTaskQueue();
-            }
         }
     }
 
@@ -74,13 +81,18 @@ class FlampModel implements ModelInterface {
     private function writeMetaRecord(object $records) {
         $sourceMeta = [
             'count_reviews' => $records->count_reviews,
+            'count_added_reviews' => $this->countReviews,
             'average_mark' => $records->average_mark,
         ];
 
-        if ($this->maxDate != PHP_INT_MIN) {
+        if ($this->maxDate !== 0) {
             $date = $this->maxDate;
         } else {
-            $date = $this->sourceConfig['max_date'];
+            $date = $this->beforeHalfYearTimestamp;
+        }
+
+        if ($this->minDate !== PHP_INT_MAX) {
+            $this->minDate = 0;
         }
 
         if (isset($records->hash)) {
@@ -94,8 +106,10 @@ class FlampModel implements ModelInterface {
             'old_hash' => $hash,
         ];
 
+        var_dump($sourceConfig);
 
-        (new DatabaseShell())->updateSourceReview($this->constInfo['source_hash_key'], [
+
+        (new DatabaseShell())->updateSourceReview($this->sourceHash, [
             'source_meta_info' => json_encode($sourceMeta),
             'source_config' => json_encode($sourceConfig),
             'handled' => "HANDLED",
@@ -105,13 +119,14 @@ class FlampModel implements ModelInterface {
     /** Обращается к стороннему сервису, которые формирует очередь последующей обработки этой ссылки */
     private function writeTaskQueue() {
         if ($this->status === self::SOURCE_NEW) {
-            if ($this->minDate === PHP_INT_MAX) {
-                $this->minDate = 0;
-            }
             (new TaskQueueController())
-                ->insertTaskQueue($this->constInfo['source_hash_key'], $this->countReviews, $this->minDate);
+                ->insertTaskQueue($this->sourceHash, $this->countReviews, $this->minDate);
         } else {
-            (new TaskQueueController())->updateTaskQueue($this->constInfo['source_hash_key']);
+            (new TaskQueueController())->updateTaskQueue($this->sourceHash);
         }
+    }
+
+    public function getNotifications(): array{
+        return $this->notifies;
     }
 }
