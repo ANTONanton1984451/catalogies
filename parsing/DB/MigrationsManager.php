@@ -108,10 +108,6 @@ class MigrationsManager
                     "text" => [
                         "LONGTEXT"
                     ],
-                    "is_answered" => [
-                        "BOOLEAN",
-                        "NOT NULL"
-                    ],
                     "answer" => [
                         "LONGTEXT"
                     ],
