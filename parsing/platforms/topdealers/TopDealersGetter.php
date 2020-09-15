@@ -3,6 +3,9 @@
 
 namespace parsing\platforms\topdealers;
 
+use DiDom\Document;
+use DiDom\Element;
+use DiDom\Query;
 use parsing\DB\DatabaseShell;
 use parsing\factories\factory_interfaces\GetterInterface;
 use parsing\logger\LoggerManager;
@@ -62,13 +65,13 @@ class TopDealersGetter implements GetterInterface
     private $half_Year_Ago;
 
     /**
-     * @var string|Crawler
+     * @var string|Document
      * Главная старица магазина на сайте
      */
     private $MainPage;
 
     /**
-     * @var string|Crawler
+     * @var string|Document
      * Страница с отзывами
      */
     private $ResponsesPage;
@@ -123,8 +126,6 @@ class TopDealersGetter implements GetterInterface
             $this->formMainData($this->last_date_review_db);
         }
 
-        $this->MainPage->clear();
-        $this->ResponsesPage->clear();
         return $this->mainData;
     }
 
@@ -216,25 +217,21 @@ class TopDealersGetter implements GetterInterface
      */
     private function setMetaInfo():void
     {
-        $rating = $this->MainPage->filter('.overall-rating tbody td');
-        $count = $rating->count();
+        $ratingElement = $this->MainPage->find('.overall-rating tbody td');
         $arrToJson=[];
-        $i_arr=0;
+        $i=0;
 
-
-        for($i = 0; $i < $count; $i++){
-
-            $className =$rating->getNode($i)->attributes->getNamedItem('class')->nodeValue;
-            $value = $rating->getNode($i)->nodeValue;
+        foreach ($ratingElement as $v){
+            $className = $v->getNode()->getAttribute('class');
+            $value = $v->getNode()->nodeValue;
 
             if ($className == 'category first') {
-                $arrToJson[$i_arr]['name'] = $value;
+                $arrToJson[$i]['name'] = $value;
             } elseif ($className == 'rating2') {
-                $arrToJson[$i_arr]['value'] = $value;
-                $i_arr++;
+                $arrToJson[$i]['value'] = $value;
+                $i++;
             }
         }
-
         $this->mainData['meta_info'] = $arrToJson;
     }
 
@@ -257,11 +254,8 @@ class TopDealersGetter implements GetterInterface
         }
     }
 
-
-
-
     /**
-     * С помощью phpQuery парсим отзывы.
+     * С помощью DiDom парсим отзывы.
      * В случае,если отзыв неполный,то применяется доп.метод,который подбирает новый отзыв
      * Селекторы которые используются :
      * 1.'div[id^="resp"] .info' - карточка отзывов
@@ -274,35 +268,36 @@ class TopDealersGetter implements GetterInterface
      */
     private function parseReviews():void
     {
-        $responses=$this->ResponsesPage->filter('div[id^="resp"] .info');
-        $count =  $responses->count();
+        $responsesCard=$this->ResponsesPage->find('div[id^="resp"] .info');
 
-        for ($i = 0; $i < $count; $i++){
-            $node = $responses->getNode($i);
-            $a = 0;
-//            $responseFullInfo['tonal'] = trim(pq($v)->find('.comment-type')->text());
-//            $responseFullInfo['title'] = pq($v)->find('.title')->text();
-//            $responseFullInfo['identifier'] = pq($v)->find('.name')->text();
-//
-//            $iterator = 1;
-//
-//            foreach (pq($v)->find('.date-list dd') as $value){
-//                if($iterator%2 == 0){
-//                    $responseFullInfo['date']=strtotime(pq($value)->text());
-//                }
-//                $iterator++;
-//            }
-//            if(pq($v)->find('p[class="read_all"]')->text()){
-//
-//                $fullReviewUrl = self::MAIN_URL . pq($v)->find('p[class="read_all"] a')->attr('href');
-//                $responseFullInfo["text"]=$this->getFullReview($fullReviewUrl);
-//
-//            }else{
-//                $responseFullInfo["text"] = pq($v)->find('p')->text();
-//            }
-//
-//            $this->mainData['reviews'][] = $responseFullInfo;
+        foreach ($responsesCard as $v){
+            $response['tonal'] = trim($v->find('.comment-type')[0]->text());
+            $response['title'] = trim($v->find('.title')[0]->text());
+            $response['identifier'] = trim($v->find('.name')[0]->text());
+            $iterator = 1;
+
+            foreach ($v->find('.date-list dd') as $value){
+                if($iterator%2 == 0){
+                    $response['date']=strtotime($value->text());
+                }
+                $iterator++;
+            }
+
+            $test = $v->find('p[class="read_all"]');
+            if($test){
+
+                $additional_url = $test[0]->find('p[class="read_all"] a')[0]->attr('href');
+                $fullReviewUrl = self::MAIN_URL . $additional_url;
+
+                $response['text'] = $this->getFullReview($fullReviewUrl);
+            }else{
+                $response['text'] = $v->find('p')[0]->text();
+            }
+
+            $this->mainData['reviews'][] = $response;
+
         }
+
     }
 
     /**
@@ -316,7 +311,7 @@ class TopDealersGetter implements GetterInterface
 
         if($FullResponsePage !== self::BAD_CONNECTION){
             $this->HTML_to_DOM($FullResponsePage);
-            return $FullResponsePage->find('.info p')->text();
+            return $FullResponsePage->find('.info p')[0]->text();
         }
         return 'Нет полной страницы';
     }
@@ -347,7 +342,7 @@ class TopDealersGetter implements GetterInterface
      */
     private function HTML_to_DOM(&$html):void
     {
-        $html = new Crawler($html);
+        $html = new Document($html);
     }
 
     /**

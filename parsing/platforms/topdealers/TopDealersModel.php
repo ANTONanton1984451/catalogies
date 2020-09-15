@@ -55,7 +55,7 @@ class TopDealersModel implements ModelInterface
         $this->taskQueueController = $controller;
 
         $this->constInfo['platform'] = self::PLATFORM;
-        $this->constInfo['is_answered'] = false;
+        $this->constInfo['answer'] = '';
 
     }
 
