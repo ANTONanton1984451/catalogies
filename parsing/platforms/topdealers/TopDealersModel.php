@@ -17,15 +17,32 @@ class TopDealersModel implements ModelInterface
 {
     private const PLATFORM = 'topdealers';
     private const ERROR_MESSAGE = 'Cannot get information from link';
-
+    /**
+     * @var array
+     * Информация которая остаётся неизменной для каждого отзыва:Платформа и ответ на отзыв
+     */
     private $constInfo;
-
+    /**
+     * @var string Флаг из БЛ
+     */
     private $handled;
+    /**
+     * @var string Флаг из БД
+     */
     private $track;
 
+    /**
+     * @var DatabaseShell
+     */
     private $dataBase;
+
+    /**
+     * @var TaskQueueController
+     */
     private $taskQueueController;
-    //todo:Нужно продумать момент,когда ссылка ломанная
+    /**
+     * @var array[] Оповещения.По дефолту стоит сообщение об ошибке
+     */
     private $notifications = ['container'=>[
                                             'type'=>self::TYPE_ERROR,
                                             'content'=>self::ERROR_MESSAGE
@@ -44,12 +61,12 @@ class TopDealersModel implements ModelInterface
 
     /**
      * @param $data
-     * Метод в любом случае обновляет конфиги и метаданные,при наличии отзывов,кладёт их в БД
+     * Метод в любом случае обновляет конфиги и метаданные.
      * Далее в зависимости от флага handled либо обновляет очередь,либо создаёт запись в очереди
+     * и при наличии отзывов,кладёт их в БД
      */
     public function writeData($data)
     {
-
         $this->updateConfig($data['config']);
         $this->updateMetaInfo($data['meta_info']);
 
@@ -61,7 +78,8 @@ class TopDealersModel implements ModelInterface
     }
 
     /**
-     * @param $config
+     * @param array $config
+     * Установка конфигов и установка информации в оповещения
      */
     public function setConfig($config)
     {
@@ -81,6 +99,7 @@ class TopDealersModel implements ModelInterface
 
     /**
      * @param array $config
+     * Установка неизменной информации в оповещения
      */
     private function setConstInfoNotifications(array $config):void
     {
@@ -90,25 +109,29 @@ class TopDealersModel implements ModelInterface
 
     /**
      * @param array $data
+     * Запись данных в БД при флаге NEW|NON_COMPLETED.
+     * При наличии ошибки отлавивает её,проводит запись в лог и выставляет соответствующий флаг данному сурсу
      */
     private function writeNewData(array $data):void
     {
-        $this->notifications['container']['content'] = $data['meta_info'];
-        $this->notifications['container']['type'] = self::TYPE_METARECORD;
 
-        $minimalDateReview = isset($data['reviews'])
-                             ?$data['reviews'][count($data['reviews'])-1]['date']
-                             : 0;
+        $minimalDateReview = isset($data['reviews'])?
+                             $data['reviews'][count($data['reviews'])-1]['date']:
+                             0;
         try {
             if(!empty($data['reviews'])){
                 $this->insertReviews($data['reviews']);
             }
 
             $this->insertTaskQueue(count($data['reviews']),
-                $minimalDateReview,
-                $this->constInfo['source_hash_key']);
+                                    $minimalDateReview,
+                                    $this->constInfo['source_hash_key']);
 
-            $this->dataBase->updateSourceReview($this->constInfo['source_hash_key'],['handled'=>self::SOURCE_HANDLED]);
+            $this->dataBase->updateSourceReview($this->constInfo['source_hash_key'],
+                                                ['handled'=>self::SOURCE_HANDLED]);
+
+            $this->notifications['container']['content'] = $data['meta_info'];
+            $this->notifications['container']['type'] = self::TYPE_METARECORD;
         }catch (\PDOException $e){
             $handled = $this->handled === self::SOURCE_NON_COMPLETED ?
                                           self::SOURCE_UNPROCESSABLE :
@@ -122,21 +145,20 @@ class TopDealersModel implements ModelInterface
 
     /**
      * @param array $data
+     * Запись данных в БД при флаге HANDLED|NON_UPDATED.
+     * При наличии ошибки отлавивает её,проводит запись в лог и выставляет соответствующий флаг данному сурсу
      */
     private function writeHandledData(array $data):void
     {
         try {
-
             if(!empty($data['reviews'])){
                 $this->setReviewNotifications($data['reviews']);
                 $this->insertReviews($data['reviews']);
-            }
-
-            if($this->notifications['container']['type'] === self::TYPE_ERROR){
-
+            }else{
                 $this->notifications['container']['type'] = self::TYPE_EMPTY;
                 $this->notifications['container']['content'] = [];
             }
+
             $this->taskQueueController->updateTaskQueue($this->constInfo['source_hash_key']);
 
         }catch (\PDOException $e){
@@ -153,12 +175,14 @@ class TopDealersModel implements ModelInterface
 
     /**
      * @param array $reviews
-     * собирает отзывы для уведомления в отдельный массив
+     * Агрегирует отзывы в поле notifications
      */
     private function setReviewNotifications(array $reviews):void
     {
+        if($this->notifications['container']['type'] !== self::TYPE_ERROR){
+            $this->notifications['container']['content'] = [];
+        }
         $this->notifications['container']['type'] = self::TYPE_REVIEWS;
-        $this->notifications['container']['content'] = [];
         switch ($this->track){
             case self::TRACK_ALL:
                 $this->notifications['container']['content'] = array_merge($this->notifications['container']['content'],
@@ -174,6 +198,7 @@ class TopDealersModel implements ModelInterface
     /**
      * @param array $reviews
      * @return array
+     * Собирает негативные отзывы
      */
     private function catchNegative(array $reviews):array
     {

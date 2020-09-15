@@ -19,25 +19,74 @@ class TopDealersGetter implements GetterInterface
    private const RESPONSES_URN  = 'responses/';
    private const MAIN_URL       = 'https://topdealers.ru';
    private const BAD_CONNECTION = '-666';                   //ответ при отсутствии соединения с донором
-
+    /**
+     * @var DatabaseShell
+     */
    private $database;
 
+    /**
+     * @var array
+     * конфиги из БД
+     */
     private $config;
+
+    /**
+     * @var string
+     * Ссылка на карточку магазина
+     */
     private $source;
+
+    /**
+     * @var string
+     * флаг из БД
+     */
     private $handled;
+
+    /**
+     * @var string
+     * Хэш сурса из БД
+     */
     private $hash;
 
+    /**
+     * @var int
+     * Количество выполнений операции getNextRecords
+     */
     private $iterator = 0;
+
+    /**
+     * @var int
+     * Пол года назад в секнудах
+     */
     private $half_Year_Ago;
 
+    /**
+     * @var string|\phpQueryObject
+     * Главная старица магазина на сайте
+     */
     private $MainPage;
+
+    /**
+     * @var string|\phpQueryObject
+     * Страница с отзывами
+     */
     private $ResponsesPage;
 
+    /**
+     * @var int
+     * Дата последнего отзыва из БД
+     */
     private $last_date_review_db;
 
+    /**
+     * @var array|int
+     */
     private $mainData;
 
-
+    /**
+     * TopDealersGetter constructor.
+     * @param DatabaseShell $database
+     */
     public function __construct(DatabaseShell $database)
     {
         $this->half_Year_Ago = time() - self::HALF_YEAR_TIMESTAMP;
@@ -52,8 +101,10 @@ class TopDealersGetter implements GetterInterface
     public function getNextRecords()
     {
         $this->iterator++;
+        if($this->iterator !== 1){
+            $this->mainData = self::END_CODE;
+        }
 
-        $this->checkIteration();
         $this->MainPage = $this->getContent($this->source);
 
         if($this->MainPage !== self::BAD_CONNECTION){
@@ -91,11 +142,13 @@ class TopDealersGetter implements GetterInterface
 
     /**
      * Действия для сломанной ссылки
+     * Выставление нужного флага ссылке
      */
     private function handleCrashLink():void
     {
         $this->mainData = self::END_CODE;
         $handled = self::SOURCE_UNPROCESSABLE;
+
         if($this->handled === self::SOURCE_NEW){
             $handled = self::SOURCE_NON_COMPLETED;
         }elseif ($this->handled === self::SOURCE_HANDLED){
@@ -128,7 +181,7 @@ class TopDealersGetter implements GetterInterface
      * @param string $url
      * @return string|null
      * Получение нужной страницы,в случае успешного подключения.
-     * В противном случае
+     * В противном случае идёт запись в лог
      */
     private function getContent(string $url):?string
     {
@@ -144,7 +197,7 @@ class TopDealersGetter implements GetterInterface
 
     /**
      * @param int $defaultDate
-     * Установка конфигов доты,в случае,если отзывов нет,то устанавливается дефолтное значение
+     * Установка конфигов даты,в случае,если отзывов нет,то устанавливается дефолтное значение
      */
     private function setSourceConfig(int $defaultDate):void
     {
@@ -196,8 +249,10 @@ class TopDealersGetter implements GetterInterface
             $this->parseReviews();
             $this->cutReviewsToTime($date);
         }
-
     }
+
+
+
 
     /**
      * С помощью phpQuery парсим отзывы.
@@ -280,20 +335,11 @@ class TopDealersGetter implements GetterInterface
     /**
      * @param $html
      * преобразовывает HTML документ в объект phpQuery
+     * по ссылке
      */
     private function HTML_to_DOM(&$html):void
     {
         $html = \phpQuery::newDocument($html);
-    }
-
-    /**
-     * Проверяет итерацию,если итераций в цикле больше одной-заканчивает работу геттера
-     */
-    private function checkIteration():void
-    {
-        if($this->iterator !== 1){
-            $this->mainData = self::END_CODE;
-        }
     }
 
     /**

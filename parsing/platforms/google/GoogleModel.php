@@ -21,24 +21,55 @@ class GoogleModel implements ModelInterface
     private const CONFIG_EMPTY = false;
     private const ERROR_MESSAGE = 'Cannot get information from link';
 
+    /**
+     * @var DatabaseShell
+     */
     private $dataBase;
+
+    /**
+     * @var TaskQueueController
+     */
     private $queueController;
-
+    /**
+     * @var string
+     */
     private $handled;
+    /**
+     * @var string
+     */
     private $track;
-
+    /**
+     * @var array[]
+     */
     private $notifications = ['container'=>[
                                             'type'=>self::TYPE_ERROR,
                                             'content'=>self::ERROR_MESSAGE
                                             ]
                              ];
+    /**
+     * @var array
+     * Массив отзывов полученных в последнюю итерацию
+     */
     private $tempReviews;
+    /**
+     * @var int
+     * Количество отзывов,положенных в БД
+     */
     private $reviewCount = 0;
-
+    /**
+     * @var string хэш сурса
+     */
     private $source_hash;
+    /**
+     * @var string Статус валидности конфигов
+     */
     private $config_status;
 
-
+    /**
+     * GoogleModel constructor.
+     * @param DatabaseShell $dbShell
+     * @param TaskQueueController $queueController
+     */
     public function __construct(DatabaseShell $dbShell, TaskQueueController $queueController)
     {
         $this->dataBase = $dbShell;
@@ -47,11 +78,13 @@ class GoogleModel implements ModelInterface
 
     /**
      * @param $data
-     * Управляющий метод для вызова метода обработки данных определённого вида(NEW|HANDLED)
+     * Управляющий метод для вызова методов обработки данных определённого вида:
+     * NEW|NON_COMPLETED
+     * или
+     * HANDLE|NON_UPDATED
      */
     public function writeData($data)
     {
-
        if($this->isNewOrNonCompleted() && $this->config_status === self::CONFIG_NOT_EMPTY){
            $this->writeNewData($data);
        }elseif($this->isHandleOrNonUpdated() && $this->config_status === self::CONFIG_NOT_EMPTY){
@@ -62,7 +95,9 @@ class GoogleModel implements ModelInterface
 
     /**
      * @param $config
-     * Метод вылидирует конфиги и если они не валидны,то фиксирует этот момент в логе и завершает работу модели
+     * Метод вылидирует конфиги и если они не валидны,то фиксирует этот момент в логе и ставит статус конфигов как
+     * пустой.
+     * Также устанавливает ХЭШ и Track для оповещений
      */
     public function setConfig($config)
     {
@@ -98,10 +133,12 @@ class GoogleModel implements ModelInterface
     {
         if($this->handled === self::SOURCE_NEW && empty($data['reviews'])){
 
-            $this->notifications['container']['content'] = array_merge($data['meta'],['added_reviews'=>$this->reviewCount]);
+            $this->notifications['container']['content'] = array_merge($data['meta'],
+                                                                       ['added_reviews'=>$this->reviewCount]);
             $this->notifications['container']['type'] = self::TYPE_METARECORD;
 
         }elseif ($this->handled === self::SOURCE_HANDLED){
+
             if(!empty($data['reviews'])){
                 $this->setReviewNotifications($data['reviews']);
             }
@@ -143,16 +180,16 @@ class GoogleModel implements ModelInterface
 
     /**
      * @param array $data
-     * Метод записывает данные сурсы после первичной обработки
+     * Метод записывает данные о сурсе после первичной обработки
      * В случае когда нет отзывовов,то он считает,что пора обновлять мета информацию
      */
     private function writeHandledData(array $data):void
     {
         try {
             if(!empty($data['reviews'])){
-                $this->reviewCount += count($data['reviews']);
-                $this->insertReviews($data['reviews']);
+                $reviewCount = $this->insertReviews($data['reviews']);
                 $this->updateConfig($data['config']);
+                $this->reviewCount += $reviewCount;
             }else{
                 $columns = ['source_meta_info'=>json_encode($data['meta'])];
                 $this->dataBase->updateSourceReview($this->source_hash,$columns);
@@ -160,9 +197,11 @@ class GoogleModel implements ModelInterface
             }
         }catch (\PDOException $e){
             $handled = $this->handled === self::SOURCE_NON_UPDATED ?
-                self::SOURCE_UNPROCESSABLE :
-                self::SOURCE_NON_UPDATED;
-            LoggerManager::log(LoggerManager::ERROR,'Ошибка в HANDLED|GoogleModel',['handled'=>$handled]);
+                                          self::SOURCE_UNPROCESSABLE :
+                                          self::SOURCE_NON_UPDATED;
+            LoggerManager::log(LoggerManager::ERROR,
+                                    'Ошибка в HANDLED|GoogleModel',
+                                            ['handled'=>$handled]);
             $this->dataBase->rollback($this->source_hash,$handled);
         }
 
@@ -178,8 +217,8 @@ class GoogleModel implements ModelInterface
         try {
             if(!empty($data['reviews'])){
                 $this->tempReviews = $data['reviews'];//????
-                $this->reviewCount += count($data['reviews']);
-                $this->insertReviews($data['reviews']);
+                $reviewCount = $this->insertReviews($data['reviews']);
+                $this->reviewCount += $reviewCount;
                 $this->updateConfig($data['config']);
 
             }else{
@@ -208,12 +247,13 @@ class GoogleModel implements ModelInterface
 
     /**
      * @param array $reviews
+     * @return int
      */
-    private function insertReviews(array $reviews):void
+    private function insertReviews(array $reviews):int
     {
         $constInfo = ['source_hash_key'=>$this->source_hash,
                       'platform'=>self::PLATFORM];
-        $this->dataBase->insertReviews($reviews,$constInfo);
+      return  $this->dataBase->insertReviews($reviews,$constInfo);
     }
 
     /**
@@ -222,8 +262,10 @@ class GoogleModel implements ModelInterface
      */
     private function setReviewNotifications(array $reviews):void
     {
+        if($this->notifications['container']['type'] !== self::TYPE_REVIEWS){
+            $this->notifications['container']['content'] = [];
+        }
         $this->notifications['container']['type'] = self::TYPE_REVIEWS;
-        $this->notifications['container']['content'] = [];
 
         switch ($this->track){
             case self::TRACK_ALL:
@@ -240,6 +282,7 @@ class GoogleModel implements ModelInterface
     /**
      * @param array $reviews
      * @return array
+     * Находит негативные отзывы и возвращает их
      */
     private function catchNegative(array $reviews):array
     {
@@ -263,7 +306,7 @@ class GoogleModel implements ModelInterface
 
     /**
      * @return bool
-     * Метод нужен для сокращения кода в методе GetNextRecords
+     * Метод нужен для сокращения кода в методе WriteData
      */
     private function isHandleOrNonUpdated():bool
     {
@@ -272,7 +315,7 @@ class GoogleModel implements ModelInterface
 
     /**
      * @return bool
-     * Метод нужен для сокращения кода в методе GetNextRecords
+     * Метод нужен для сокращения кода в методе WriteData
      */
     private function isNewOrNonCompleted():bool
     {

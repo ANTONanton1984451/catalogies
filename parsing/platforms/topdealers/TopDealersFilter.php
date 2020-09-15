@@ -6,9 +6,16 @@ namespace parsing\platforms\topdealers;
 
 use parsing\factories\factory_interfaces\FilterInterface;
 
+/**
+ * Class TopDealersFilter
+ * @package parsing\platforms\topdealers
+ */
 class TopDealersFilter implements FilterInterface
 {
-
+    /**
+     * @var array
+     *
+     */
     private $mainData = [];
 
     /**
@@ -30,7 +37,7 @@ class TopDealersFilter implements FilterInterface
 
     /**
      * @param array $reviews
-     * Форматирует отзывы
+     * Формирует отзывы
      */
     private function formReview(array $reviews):void
     {

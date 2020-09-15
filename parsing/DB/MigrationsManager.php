@@ -166,7 +166,7 @@ class MigrationsManager
 
 
     public function seedDatabase() {
-        $this->seedGoogle();
+       // $this->seedGoogle();
         $platforms = [
 //            'flamp',
             'topdealers',
@@ -205,22 +205,22 @@ class MigrationsManager
             'https://volgograd.zoon.ru/beauty/kosmetologicheskaya_klinika_soprano/',
         ];
 
-//        foreach ($platforms as $platform) {
-//
-//
-//            $sources = $platform . "_links";
-//            foreach ($$sources as $source) {
-//                $db = new DatabaseShell();
-//                $db->insertSourceReview([
-//                    'source_hash' => md5($source),
-//                    'platform' => $platform,
-//                    'source' => $source,
-//                    'actual' => 'ACTIVE',
-//                    'track' => 'ALL',
-//                    'handled' => 'NEW'
-//                ]);
-//            }
-//        }
+        foreach ($platforms as $platform) {
+
+
+            $sources = $platform . "_links";
+            foreach ($$sources as $source) {
+                $db = new DatabaseShell();
+                $db->insertSourceReview([
+                    'source_hash' => md5($source),
+                    'platform' => $platform,
+                    'source' => $source,
+                    'actual' => 'ACTIVE',
+                    'track' => 'ALL',
+                    'handled' => 'NEW'
+                ]);
+            }
+        }
 
     }
 

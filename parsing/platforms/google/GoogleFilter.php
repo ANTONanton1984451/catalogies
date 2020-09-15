@@ -13,125 +13,131 @@ use parsing\factories\factory_interfaces\FilterInterface;
  */
 class GoogleFilter implements FilterInterface
 {
-  private $buffer_info;
-  private $buffer_info_temp;
-
+    /**
+     * @var array
+     */
+      private $buffer_info;
 
     /**
-     * @param array $data-данные,поступающие из буфера для обработки
-     * @return array
-     * Метод преобразует данные в вид,приемлемый для записи в БД.
-     * Не изменяет конфиги,а просто передаёт их дальше в буфер!!!!!!!!
-     * Выдаёт конфиги,отзывы и метаданные для данного $source
+     * @var array
      */
-  public function clearData($data):array
-  {
-       $this->buffer_info      = [];
-       $this->buffer_info_temp = $data;
+      private $buffer_info_temp;
 
-       if(empty($data['platform_info']['reviews'])){
 
-          $this->buffer_info['meta'] = [
-                                        'rating'=>     $data['platform_info']['averageRating'],
-                                        'reviewCount'=>     $data['platform_info']['totalReviewCount']
-                                       ];
+        /**
+         * @param array $data-данные,поступающие из буфера для обработки
+         * @return array
+         * Метод преобразует данные в вид,приемлемый для записи в БД.
+         * Не изменяет конфиги,а просто передаёт их дальше в буфер!!!!!!!!
+         * Выдаёт конфиги,отзывы и метаданные для данного $source
+         * Очищает буферы при каждом вызове
+         */
+      public function clearData($data):array
+      {
+           $this->buffer_info      = [];
+           $this->buffer_info_temp = $data;
 
-       }else{
+           if(empty($data['platform_info']['reviews'])){
+              $this->buffer_info['meta'] = [
+                                            'rating'=>     $data['platform_info']['averageRating'],
+                                            'reviewCount'=>     $data['platform_info']['totalReviewCount']
+                                           ];
+           }else{
 
-           $this->formReview();
-           $this->buffer_info['config'] = $this->buffer_info_temp['config'];
+               $this->formReview();
+               $this->buffer_info['config'] = $this->buffer_info_temp['config'];
 
-       }
+           }
 
-       return $this->buffer_info;
-  }
+           return $this->buffer_info;
+      }
 
-    /**
-     * Формирует отзывы к нормальному виду
-     * На самом деле фильтр берёт на себя немного функции Модели,что не очень хорошо,но пока всё работает отлично
-     * поэтому в ближайшее время менять тут ничего не стоит
-     * todo:Тудушка стоит для того,чтобы когда-то в будущем я это исправил
-     */
-  private function formReview():void
-  {
-      foreach ($this->buffer_info_temp['platform_info']['reviews'] as $v){
+        /**
+         * Формирует отзывы к нормальному виду
+         * На самом деле фильтр берёт на себя немного функции Модели,что не очень хорошо,но пока всё работает отлично
+         * поэтому в ближайшее время менять тут ничего не стоит
+         * todo:Тудушка стоит для того,чтобы когда-то в будущем я это исправил
+         */
+      private function formReview():void
+      {
+          foreach ($this->buffer_info_temp['platform_info']['reviews'] as $v){
 
-          $ratingInt                 = $this->enumToInt($v['starRating']);
+              $ratingInt                 = $this->enumToInt($v['starRating']);
 
-          $review['identifier']   = json_encode(['identifier'=>$v['reviewId'],'name'=>$v['reviewer']['displayName']]);
-          $review['rating']       = $ratingInt;
-          $review['date']         = strtotime($v['updateTime']);
-          $review['tonal']        = $this->ratingToTonal($ratingInt);
+              $review['identifier']   = json_encode(['identifier'=>$v['reviewId'],'name'=>$v['reviewer']['displayName']]);
+              $review['rating']       = $ratingInt;
+              $review['date']         = strtotime($v['updateTime']);
+              $review['tonal']        = $this->ratingToTonal($ratingInt);
 
-          if(isset($v['comment'])){
-              $review['text'] = $this->splitText($v['comment']);
-          }else{
-              $review['text'] = '';
+              if(isset($v['comment'])){
+                  $review['text'] = $this->splitText($v['comment']);
+              }else{
+                  $review['text'] = '';
+              }
+
+              if(isset($v['reviewReply'])){
+                  $review['answer'] = $v['reviewReply']['comment'];
+              }
+              $this->buffer_info['reviews'][] = $review;
           }
 
-          if(isset($v['reviewReply'])){
-              $review['answer'] = $v['reviewReply']['comment'];
+      }
+
+        /**
+         * @param string $rating
+         * @return int
+         * Переводит Гугловский енам в числовой эквивалент
+         */
+      private function enumToInt(string $rating):int
+      {
+          switch ($rating){
+              case 'FIVE':
+                  return 10;
+              case 'FOUR':
+                  return 8;
+              case 'THREE':
+                  return 6;
+              case 'TWO':
+                  return 4;
+              case 'ONE':
+                  return 2;
+              default:
+                  return -1;
           }
-          $this->buffer_info['reviews'][] = $review;
       }
 
-  }
 
-    /**
-     * @param string $rating
-     * @return int
-     * Переводит Гугловский енам в числовой эквивалент
-     */
-  private function enumToInt(string $rating):int
-  {
-      switch ($rating){
-          case 'FIVE':
-              return 10;
-          case 'FOUR':
-              return 8;
-          case 'THREE':
-              return 6;
-          case 'TWO':
-              return 4;
-          case 'ONE':
-              return 2;
-          default:
-              return -1;
+        /**
+         * @param int $rating
+         * @return string
+         * Основываясь на диапозоне оценок,переводит числовой параметр оценки в тональность
+         */
+      private function ratingToTonal(int $rating):string
+      {
+          if($rating > 0 && $rating < 8 ){
+              return self::TONAL_NEGATIVE;
+          }
+          if($rating === 8){
+              return self::TONAL_NEUTRAL;
+          }
+          if($rating === 10){
+              return self::TONAL_POSITIVE;
+          }
+          return 'UNDEFINED';
       }
-  }
 
 
-    /**
-     * @param int $rating
-     * @return string
-     * Основываясь на диапозоне оценок,переводит числовой параметр оценки в тональность
-     */
-  private function ratingToTonal(int $rating):string
-  {
-      if($rating > 0 && $rating < 8 ){
-          return self::TONAL_NEGATIVE;
+        /**
+         * @param string $text
+         * @return string|null
+         * т.к. Большинство отзывов имеют приписку перевода на английский,который не нужен,
+         * то данный метод обрезает эту приписку.
+         */
+      private function splitText(string $text):?string
+      {
+            $text_arr = explode('(Translated by Google)',$text);
+            $text = $text_arr[0];
+            return trim($text);
       }
-      if($rating === 8){
-          return self::TONAL_NEUTRAL;
-      }
-      if($rating === 10){
-          return self::TONAL_POSITIVE;
-      }
-      return 'UNDEFINED';
-  }
-
-
-    /**
-     * @param string $text
-     * @return string|null
-     * т.к. Большинство отзывов имеют приписку перевода на английский,который не нужен,
-     * и данный метод обрезает эту приписку
-     */
-  private function splitText(string $text):?string
-  {
-        $text_arr = explode('(Translated by Google)',$text);
-        $text = $text_arr[0];
-        return trim($text);
-  }
 
 }

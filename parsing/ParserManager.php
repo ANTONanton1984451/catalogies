@@ -17,8 +17,9 @@ class ParserManager implements ConstantInterfaces {
 
     public function __construct($workerType,DatabaseShell $dataBaseShell) {
         $this->worker = $workerType;
-        $this->sources = $this->getActualSources($workerType);
         $this->dataBaseShell = $dataBaseShell;
+        $this->sources = $this->getActualSources($workerType);
+
     }
 
     public function parseSources() {
