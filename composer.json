@@ -8,6 +8,8 @@
         "monolog/monolog": "^2.1",
         "workerman/workerman" : "^4.0.7",
         "ext-curl": "*",
-        "mashape/unirest-php": "^3.0"
+        "mashape/unirest-php": "^3.0",
+        "symfony/dom-crawler": "^5.1",
+        "symfony/css-selector": "^5.1"
     }
 }

@@ -7,6 +7,7 @@ use parsing\DB\DatabaseShell;
 use parsing\factories\factory_interfaces\GetterInterface;
 use parsing\logger\LoggerManager;
 use Unirest\Request;
+use Symfony\Component\DomCrawler\Crawler;
 
 /**
  * Class TopDealersGetter
@@ -61,13 +62,13 @@ class TopDealersGetter implements GetterInterface
     private $half_Year_Ago;
 
     /**
-     * @var string|\phpQueryObject
+     * @var string|Crawler
      * Главная старица магазина на сайте
      */
     private $MainPage;
 
     /**
-     * @var string|\phpQueryObject
+     * @var string|Crawler
      * Страница с отзывами
      */
     private $ResponsesPage;
@@ -122,7 +123,8 @@ class TopDealersGetter implements GetterInterface
             $this->formMainData($this->last_date_review_db);
         }
 
-        \phpQuery::unloadDocuments();
+        $this->MainPage->clear();
+        $this->ResponsesPage->clear();
         return $this->mainData;
     }
 
@@ -214,19 +216,23 @@ class TopDealersGetter implements GetterInterface
      */
     private function setMetaInfo():void
     {
-        $rating = $this->MainPage->find('.overall-rating tbody td');
+        $rating = $this->MainPage->filter('.overall-rating tbody td');
+        $count = $rating->count();
         $arrToJson=[];
-        $i=0;
+        $i_arr=0;
 
-        foreach ($rating as $v) {
 
-            if (pq($v)->attr('class') == 'category first') {
-                $arrToJson[$i]['name'] = pq($v)->text();
-            } elseif (pq($v)->attr('class') == 'rating2') {
-                $arrToJson[$i]['value'] = pq($v)->text();
-                $i++;
+        for($i = 0; $i < $count; $i++){
+
+            $className =$rating->getNode($i)->attributes->getNamedItem('class')->nodeValue;
+            $value = $rating->getNode($i)->nodeValue;
+
+            if ($className == 'category first') {
+                $arrToJson[$i_arr]['name'] = $value;
+            } elseif ($className == 'rating2') {
+                $arrToJson[$i_arr]['value'] = $value;
+                $i_arr++;
             }
-
         }
 
         $this->mainData['meta_info'] = $arrToJson;
@@ -268,32 +274,34 @@ class TopDealersGetter implements GetterInterface
      */
     private function parseReviews():void
     {
-        $responses=$this->ResponsesPage->find('div[id^="resp"] .info');
+        $responses=$this->ResponsesPage->filter('div[id^="resp"] .info');
+        $count =  $responses->count();
 
-        foreach ($responses as $v){
-
-            $responseFullInfo['tonal'] = trim(pq($v)->find('.comment-type')->text());
-            $responseFullInfo['title'] = pq($v)->find('.title')->text();
-            $responseFullInfo['identifier'] = pq($v)->find('.name')->text();
-
-            $iterator = 1;
-
-            foreach (pq($v)->find('.date-list dd') as $value){
-                if($iterator%2 == 0){
-                    $responseFullInfo['date']=strtotime(pq($value)->text());
-                }
-                $iterator++;
-            }
-            if(pq($v)->find('p[class="read_all"]')->text()){
-
-                $fullReviewUrl = self::MAIN_URL . pq($v)->find('p[class="read_all"] a')->attr('href');
-                $responseFullInfo["text"]=$this->getFullReview($fullReviewUrl);
-
-            }else{
-                $responseFullInfo["text"] = pq($v)->find('p')->text();
-            }
-
-            $this->mainData['reviews'][] = $responseFullInfo;
+        for ($i = 0; $i < $count; $i++){
+            $node = $responses->getNode($i);
+            $a = 0;
+//            $responseFullInfo['tonal'] = trim(pq($v)->find('.comment-type')->text());
+//            $responseFullInfo['title'] = pq($v)->find('.title')->text();
+//            $responseFullInfo['identifier'] = pq($v)->find('.name')->text();
+//
+//            $iterator = 1;
+//
+//            foreach (pq($v)->find('.date-list dd') as $value){
+//                if($iterator%2 == 0){
+//                    $responseFullInfo['date']=strtotime(pq($value)->text());
+//                }
+//                $iterator++;
+//            }
+//            if(pq($v)->find('p[class="read_all"]')->text()){
+//
+//                $fullReviewUrl = self::MAIN_URL . pq($v)->find('p[class="read_all"] a')->attr('href');
+//                $responseFullInfo["text"]=$this->getFullReview($fullReviewUrl);
+//
+//            }else{
+//                $responseFullInfo["text"] = pq($v)->find('p')->text();
+//            }
+//
+//            $this->mainData['reviews'][] = $responseFullInfo;
         }
     }
 
@@ -339,7 +347,7 @@ class TopDealersGetter implements GetterInterface
      */
     private function HTML_to_DOM(&$html):void
     {
-        $html = \phpQuery::newDocument($html);
+        $html = new Crawler($html);
     }
 
     /**
