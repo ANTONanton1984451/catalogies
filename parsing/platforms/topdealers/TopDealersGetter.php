@@ -4,13 +4,11 @@
 namespace parsing\platforms\topdealers;
 
 use DiDom\Document;
-use DiDom\Element;
-use DiDom\Query;
 use parsing\DB\DatabaseShell;
 use parsing\factories\factory_interfaces\GetterInterface;
 use parsing\logger\LoggerManager;
 use Unirest\Request;
-use Symfony\Component\DomCrawler\Crawler;
+
 
 /**
  * Class TopDealersGetter
